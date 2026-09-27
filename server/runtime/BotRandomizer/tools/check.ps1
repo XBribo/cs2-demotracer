@@ -6,6 +6,7 @@
 param([string]$DotnetPath = 'dotnet')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$productRoot = [IO.Path]::GetFullPath((Join-Path $root '../../..'))
 $catalog = Join-Path $root '../common/econ/randomizer-catalog.json'
 $econ = Join-Path $root '../common/econ/cs2-lib-econ-index.v1.json'
 foreach ($path in @($catalog, $econ, (Join-Path $root '../common/contracts/hook-runtime.v1.json'))) {
@@ -13,7 +14,7 @@ foreach ($path in @($catalog, $econ, (Join-Path $root '../common/contracts/hook-
         throw 'Missing common dependency; run git submodule update --init --recursive'
     }
 }
-& $DotnetPath build (Join-Path $root 'BotRandomizer.csproj') -c Release '--nologo' '-p:NuGetAudit=false' '-p:UseSharedCompilation=false' '-m:1' '-nodeReuse:false'
+& $DotnetPath build (Join-Path $root 'BotRandomizer.csproj') -c Release '--nologo' '-p:NuGetAudit=false' '-p:UseSharedCompilation=false' '-p:DebugType=None' '-p:DebugSymbols=false' "-p:PathMap=$productRoot=/_/demotracer" '-m:1' '-nodeReuse:false'
 if ($LASTEXITCODE -ne 0) { throw 'Provider build failed' }
 $catalog = Join-Path $root 'bin/Release/net10.0/cosmetic_catalog.json'
 $econ = Join-Path $root 'bin/Release/net10.0/cs2-lib-econ-index.v1.json'

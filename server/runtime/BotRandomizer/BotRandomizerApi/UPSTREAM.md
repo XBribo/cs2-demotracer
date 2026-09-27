@@ -12,7 +12,7 @@
 This API is maintained beside its canonical provider in
 `unicbm/demotracer`, extracted with the provider from
 `unicbm/demotracer` commit `012d978ecdce8a949306fdcec39e4dcd9bf7624e`.
-Consumers reference this project through a pinned dependency. Runtime deployment
+Product consumers reference this project directly. Runtime deployment
 uses the single canonical `BotRandomizerApi.dll` installed by the playback
 bundle under `addons/counterstrikesharp/shared/BotRandomizerApi/`. Compatible
 BotRandomizer providers must reference that same API v3 contract rather than

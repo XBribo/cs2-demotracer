@@ -6,6 +6,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export function scopeFor(files, full = false) {
+  files = files.filter(f => !f.endsWith('.md'));
   const any = pattern => files.some(f => pattern.test(f));
   const infrastructure = any(/^(\.github\/|tooling\/|components\.json$|\.gitmodules$|NuGet\.Config$|global\.json$)/);
   const shared = any(/^(shared\/contracts\/|server\/runtime\/common\/)/);

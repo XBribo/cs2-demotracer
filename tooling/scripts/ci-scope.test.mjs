@@ -6,7 +6,7 @@ import test from 'node:test';
 import { scopeFor } from './ci-scope.mjs';
 
 test('docs changes do not compile products', () => {
-  assert.ok(Object.values(scopeFor(['README.md', 'docs/FORMAT.md'])).every(v => !v));
+  assert.ok(Object.values(scopeFor(['README.md', 'docs/FORMAT.md', 'server/runtime/BotController/README.md', 'desktop/converter/PROVENANCE.md'])).every(v => !v));
 });
 test('frontend avoids native and Rust work', () => {
   assert.deepEqual(scopeFor(['desktop/gui/src/App.tsx']), { parser:false, converter:false, desktop:false, frontend:true, playback:false, nativeCommon:false, fuzz:false });

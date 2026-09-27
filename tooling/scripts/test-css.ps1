@@ -18,6 +18,7 @@ $botRandomizerProvider = Join-Path $repoRoot "server\runtime\BotRandomizer\BotRa
 $botRandomizerCatalog = Join-Path $repoRoot "server\runtime\BotRandomizer\bin\$Configuration\net10.0\cosmetic_catalog.json"
 $replayEconIndex = Join-Path $repoRoot "server\runtime\BotRandomizer\bin\$Configuration\net10.0\cs2-lib-econ-index.v1.json"
 $componentArguments = @(
+    "-p:PathMap=$repoRoot=/_/demotracer",
     "-p:DtrCommonRoot=$(Join-Path $repoRoot 'server/runtime/common')",
     "-p:DtrHiderRoot=$(Join-Path $repoRoot 'server/runtime/BotHider')",
     "-p:DtrRandomizerRoot=$(Join-Path $repoRoot 'server/runtime/BotRandomizer')",

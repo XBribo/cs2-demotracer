@@ -6,15 +6,15 @@ playback. It is deliberately separate from the desktop converter.
 | Path | Responsibility |
 | --- | --- |
 | [`plugins/DemoTracer/`](plugins/DemoTracer/) | Product playback module; orchestration and commands in `src/DemoTracer`, configuration in `config`, regression suite in `tests/DemoTracer.Tests` |
-| [`runtime/`](runtime/) | Pinned bot runtime components and their own public APIs |
+| [`runtime/`](runtime/) | Product bot runtime modules and their public APIs |
 | [`runtime/common/`](runtime/common/) | Shared native utilities, companion API, contracts and econ data |
 
-The product integration release selects compatible, independently versioned
-component releases for one playback bundle. Do not mix arbitrary binaries: the manifest, native ABI,
+The product release builds matched modules from one product revision for its
+playback bundle. Do not mix arbitrary binaries: the manifest, native ABI,
 BotHider API, and CounterStrikeSharp reader must remain compatible.
-Clone/init recursively before building. Component source and tests are maintained
-in their owning repositories; the root `automation/components` PR updates their
-release gitlinks after review, not their original upstream source branches.
+Source and tests are maintained together here. Original upstream changes are
+reviewed and imported deliberately. Only the parser remains a source submodule;
+server builds use direct references to the shared runtime modules.
 
 The CSS project is `plugins/DemoTracer/src/DemoTracer/DemoTracer.csproj` and
 builds to `src/DemoTracer/bin/<Configuration>/net10.0` inside the component.

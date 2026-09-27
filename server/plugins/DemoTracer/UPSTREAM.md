@@ -9,8 +9,9 @@ This component was extracted from
 - license: the original root `LICENSE` (AGPL-3.0-only).
 
 `unicbm/demotracer` is the maintained source repository for this
-component. Subsequent product builds consume a pinned dependency revision;
-the product repository does not maintain another editable source copy.
+module. Product builds consume this directory directly; there is one editable
+source copy in the product working tree. The former component history is retained
+under the product repository's `component-archive/css/` tags.
 Runtime assembly, install directory, capability, and public API identifiers
 are preserved by the extraction. Dependency path changes do not introduce a
 new playback protocol or change native ABI requirements.

@@ -16,5 +16,5 @@ foreach ($relative in @(
     if (-not (Test-Path -LiteralPath $source)) { throw "Missing tested build output: $relative" }
     $target = Join-Path (Join-Path $root $Destination) $relative
     [IO.Directory]::CreateDirectory($target) | Out-Null
-    Get-ChildItem -LiteralPath $source -File | Copy-Item -Destination $target
+    Get-ChildItem -LiteralPath $source | Copy-Item -Destination $target -Recurse
 }

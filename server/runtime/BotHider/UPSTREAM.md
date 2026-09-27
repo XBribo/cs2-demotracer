@@ -5,7 +5,7 @@ This runtime started from
 `4895e6c47c7f490be79c268eef544693d9ba8f94` (2026-07-12).
 
 [`unicbm/demotracer`](https://github.com/unicbm/demotracer/tree/main/server/runtime/BotHider) is the
-maintained source of truth, extracted from DemoTracer's
+maintained source of truth, consolidated in DemoTracer's
 `server/runtime/BotHider` without changing its public identities.
 Upstream changes are reviewed and imported selectively; this repository is not
 kept in mechanical lockstep with the upstream repository.
