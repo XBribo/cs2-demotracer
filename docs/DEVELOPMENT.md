@@ -2,11 +2,8 @@
 
 ## Architecture
 
-DemoTracer owns its GUI, converter, playback plugin, bot runtimes and shared
-infrastructure in one working tree. Only the maintained parser fork at
-`third_party/demoparser` is a Git submodule. `components.json` records source
-ownership; product modules use the product commit, and the parser uses its
-exact gitlink. Public API/ABI and installed DLL names are unchanged.
+All product modules are maintained in this repository. Only
+`third_party/demoparser` is a submodule; `components.json` records ownership.
 
 | Path | Responsibility |
 | --- | --- |
@@ -25,22 +22,11 @@ exact gitlink. Public API/ABI and installed DLL names are unchanged.
 | `shared/contracts/` | Product-level supported Playback compatibility contract |
 | `tooling/` | Validation, packaging, signing, and publishing automation |
 
-The Rust converter crate is the conversion truth source. The desktop backend
-calls it directly; there is no supported converter CLI. Future automation
-should use a separately versioned API instead of recreating a second UI.
-Its Cargo package and library remain `cs2-demotracer` and `cs2_demotracer`.
-Provider APIs live with their providers: BotController and BotHider under
-`csharp/`, and BotRandomizer under `BotRandomizerApi/`. Consumers use direct
-references to these modules and the single `server/runtime/common` directory.
-
-The CSS project is
-`server/plugins/DemoTracer/src/DemoTracer/DemoTracer.csproj`. Its production code
-is organized by responsibility beneath that directory, with the plugin entry
-point in `Lifecycle/DemoTracerPlugin.cs` and native ABI declarations in
-`Native/BotControllerNativeTypes.cs`. Builds write to
-`src/DemoTracer/bin/<Configuration>/net10.0` inside the component. Configuration
-templates remain separate in `config/`; packaging places the native profile and
-example configuration beside the plugin DLL under their existing filenames.
+The GUI calls the Rust converter crate (`cs2-demotracer` / `cs2_demotracer`)
+directly; there is no supported converter CLI. Provider APIs live under each
+provider's `csharp/` directory, or `BotRandomizerApi/` for BotRandomizer.
+See the [playback source map](../server/plugins/DemoTracer/docs/DEVELOPMENT.md)
+for the managed plugin's internal layout.
 
 Demo-backed appearance rules live in `desktop/converter/src/cosmetics/`:
 
@@ -62,31 +48,18 @@ capture, public manifest fields and runtime contracts remain separate concerns.
 
 ## Dependencies and Provenance
 
-The packaged Windows x64 desktop app requires Microsoft Edge WebView2 but no
-developer toolchain. Source builds require Rust stable with the Windows MSVC
-target, Node.js 22, pnpm 11.9, .NET 10, and the Tauri Windows prerequisites.
+Source builds require Rust stable with the Windows MSVC target, Node.js 22,
+pnpm 11.9, .NET 10 and the Tauri Windows prerequisites. Native builds also need
+the pinned [server toolchain](../server/README.md#shared-hook-runtime).
 
-Pinned parser, inspect-link, cosmetic, crosshair, flag, and professional-player
-sources are recorded under `third_party/`,
-`server/runtime/common/tools/cs2-lib-data/`, component manifests, lockfiles,
-and their accompanying notices. Generated catalog projections are never edited
-by hand.
+Dependency pins and licenses live in `third_party/`, component manifests,
+lockfiles and accompanying notices. BotController, BotHider and BotRandomizer
+are maintained upstream derivatives; preserve their licenses, attribution and
+`UPSTREAM.md` files. Generated catalogs must not be edited by hand.
 
-`server/runtime/BotController`, `server/runtime/BotHider`, and
-`server/runtime/BotRandomizer` are maintained
-derivatives of their recorded upstream projects. Preserve their own licenses, attribution, and
-`UPSTREAM.md` files; they are not first-party DemoTracer source for copyright
-header purposes. The playback server additionally requires Windows x64 CS2,
-Metamod:Source 2.0 build 1469+, a KHook-enabled CounterStrikeSharp host, and a
-matching DemoTracer bundle. See the pinned source baseline and native hook
-tests in [playback server requirements](../server/README.md#shared-hook-runtime).
-
-BotRandomizer 1.7.0 is part of the matched playback bundle and implements the v3
-replay-plan API. DemoTracer owns normalization and plan lifetime only;
-BotRandomizer owns all cosmetic entity writes at spawn or item construction.
-Ray-Trace 1.0.16 or newer is optional for stricter handoff line-of-sight checks.
-Do not mix BotController, BotHider, or BotRandomizer binaries from full
-CS2-Bot-Improver packages into a DemoTracer bundle.
+BotRandomizer owns cosmetic entity writes; DemoTracer submits validated plans
+through API v3. Ray-Trace 1.0.16+ is optional for stricter handoff line-of-sight
+checks. Install the matched playback bundle rather than mixing provider DLLs.
 
 Replay has one movement input path: after the engine's `SetupMove`, BotController
 supplies the demo's pre-command position and velocity in `CMoveData`. Native
@@ -109,7 +82,7 @@ movement initializations without writing per-tick logs.
 
 ## Component Maintenance
 
-For a fresh source checkout or after pulling a product pin update:
+Initialize the parser checkout:
 
 ```powershell
 git clone --recurse-submodules https://github.com/unicbm/demotracer.git
@@ -122,24 +95,10 @@ The source-layout check rejects nested product submodules and validates the
 single parser pin. Update the parser deliberately after reviewing its fork;
 do not use `git submodule update --remote` as a product update mechanism.
 
-Product changes, shared declarations and affected consumers land together.
-CI selects checks from the complete push/PR diff, including deleted paths.
-Shared contracts, common sources and build/CI tooling run all checks. GUI-only
-changes avoid server builds; server changes validate the matched playback
-bundle. Missing diff information falls back to the full suite. Manual CI and
-NSIS release workflows always run all checks. Packaging reuses tested managed
-binaries, native packages and the validated standalone Randomizer archive.
-
-GUI/Playback versions and public API/ABI versions remain independent. Changing
-source layout does not change installed identities or compatibility contracts.
-The independent Randomizer package remains available as a CI artifact and can
-be attached to a product release without creating a separate source release PR.
-
-Do not request a second AI review for unchanged, already reviewed source or a
-mechanical version-only update. Review new runtime/contract changes and Action
-major-version or permission changes. Automated PR authorship is not a reason
-to skip deterministic checks. Keep cloud automatic reviews disabled and request
-additional AI reviews explicitly when useful.
+Update shared declarations and affected consumers together. CI selects affected
+checks; shared/build changes, missing diff information and releases run the full
+suite. Packaging reuses tested artifacts. GUI, Playback and API/ABI versions are
+independent. BotRandomizer also produces a standalone package.
 
 ### Component history
 
@@ -153,10 +112,6 @@ Older product commits still contain historical gitlinks; use the archived
 component refs when reconstructing those revisions after repository retirement.
 
 ## Build and Test
-
-Requirements:
-
-- Local CS2 Metamod/SDK toolchain only when rebuilding native runtimes
 
 The full professional identity dataset is maintained in the separate public
 [`unicbm/CS2-pro-steamid-lib`](https://github.com/unicbm/CS2-pro-steamid-lib)
@@ -172,16 +127,8 @@ The importer is offline: it reads that checkout's committed cache and never
 contacts Liquipedia. It refuses dirty or unpinned source worktrees. CI performs
 the same pinned checkout and generation step.
 
-Vite validates and merges the identity sources at build time, then emits a
-display/search projection and the cosmetic catalog as separate, hashed JSON
-assets. The UI loads these local assets on demand and shares each decoded
-catalog across views. Original catalogs and provenance remain the build inputs;
-do not hand-edit the generated runtime projection. Country flags retain the
-complete supported country set in the UI's 4:3 aspect ratio.
-
-Release binaries use Tauri's default Brotli asset compression. `dist` sizes are
-uncompressed asset sizes, not installer sizes. Adding a second compression layer
-requires measuring both compressed size and the additional decoding path.
+Generated identity and cosmetic assets are local build outputs. See
+[GUI data](../desktop/gui/src/data/README.md) for their sources and generation.
 
 Run the narrowest affected checks first:
 
@@ -221,50 +168,21 @@ To run them, supply the original upstream `test_demo.dem` using the script's
 green run does not claim the external fixture lane passed. See the parser's
 README for the fixture provenance boundary.
 
-`DEMOTRACER_PROFILE` enables coarse stderr timings for first/second pass, column
-merge, converter channels/fallback reasons, hashing, sorting and row materialization.
-It is off by default and does not log per-tick data. The GUI release profile uses
-speed optimization (`opt-level = 3`), fat LTO and one codegen unit. Compare
-performance with matching release code-generation settings and diagnostics
-disabled. Keep local measurement tools, demo inputs and results out of commits.
+Use release builds for performance measurements, with diagnostics disabled.
 
-Direct scalar columns record value changes during protocol decoding and expand
-them into final typed columns using linear CPU cursors. Entity generations and
-output-row sequence distinguish recreation, missing values and multiple samples
-within one tick. Scalar columns also track the actual controller, rules, team
-and active-weapon entities referenced by each row. Vectors and lists retain
-their existing semantics. Immutable history, subticks and sticker snapshots share backing
-storage; repeated strings use dictionary columns and are materialized by the
-converter. Row-local entity links are resolved once, and inventory snapshots
-invalidate on their actual data dependencies rather than every entity packet.
+| Environment variable | Diagnostic |
+| --- | --- |
+| `DEMOTRACER_PROFILE` | Parse phases, converter channels/fallbacks, hashing and materialization timings |
+| `DEMOTRACER_SPARSE_COLUMNS=0` | Disable sparse scalar collection for comparison |
+| `DEMOTRACER_PROFILE_PROPERTIES=1` | Sample getters/appends once per 256 rows; includes timer overhead |
 
-Set `DEMOTRACER_SPARSE_COLUMNS=0` to compare the normal collector against sparse
-scalar collection in the same executable. Leave it unset for the default optimized
-path. `DEMOTRACER_PROFILE` additionally reports frame decompression, entity
-decoding, collection, and deferred-column finalization; include all these phases
-in the complete parse time. These optimizations use CPU only and add no graphics
-runtime or driver requirement.
+Continuous-state fields use a sequential parse channel; other fields use
+parallel fullpacket segments. Their tick/entity/SteamID/round keys must match
+before merging. Missing columns or alignment failures trigger a full sequential
+parse. `DecodePlan::project_entity_state` avoids storing unused properties while
+still consuming all wire values and retaining requested data dependencies.
 
-For hotspot diagnosis, `DEMOTRACER_PROFILE_PROPERTIES=1` samples one row in
-each 256-row block and reports the most expensive remaining getters/appends.
-Sampling rotates across player slots. Timer overhead is included, so use this
-to locate hotspots, not as a substitute for complete parse timings. Leave it
-unset for performance measurements.
-
-The converter splits continuous-state fields (usercmds, duck/fall state,
-accumulated damage and affected source-state fields) into a sequential channel;
-the remaining channel uses fullpacket segments in parallel. Both channels run
-concurrently, and every tick/entity/SteamID/round key must match in order before
-the overlay is accepted. Unsupported fields, missing columns or alignment
-failure fall back to the complete sequential parse. Source-state aliases also
-resolve through this overlay.
-
-`DecodePlan::project_entity_state` is an opt-in dependency projection used by
-the converter. It consumes every wire value while avoiding storage for unused
-ordinary properties. Requested fields, query filters, parser metadata and
-dynamic inventory/econ/event namespaces are retained. The restricted direct-row
-channel can omit unrelated links; general parser plans keep full entity state.
-Input hashing and column reclamation overlap independent parsing/row work.
+### GUI acceptance
 
 Run the install-free GUI acceptance application with its real Rust backend and
 Vite hot reload:
@@ -274,17 +192,9 @@ cd desktop\gui
 pnpm run dev:acceptance
 ```
 
-This is the normal GUI acceptance entry point. It does not build or install an
-NSIS package. It starts Vite on
-`127.0.0.1:1420` and opens that frontend inside the Tauri WebView, so Tauri
-commands, the converter, the local library, avatar cache, and filesystem access
-remain available. The Rust backend uses the release profile for realistic demo
-parsing performance while TSX and CSS edits hot-reload in the already-open
-window. `pnpm dev` is a short alias for the same workflow. Use `pnpm run
-dev:debug` only when debugging Rust itself. `pnpm run dev:web` starts only the
-frontend server and is useful for isolated layout work; a regular browser at
-that address does not have Tauri IPC and therefore cannot be used to accept
-Manifest, library, conversion, or other real-backend behavior.
+This runs the release Rust backend with Vite hot reload at `127.0.0.1:1420`.
+`pnpm dev` is an alias. Use `dev:debug` for Rust debugging or `dev:web` for
+frontend-only layout work; a browser has no Tauri IPC.
 
 For a standalone release executable that runs without Vite, use the Tauri
 build entry point from `desktop/gui`:
@@ -293,27 +203,20 @@ build entry point from `desktop/gui`:
 node node_modules/@tauri-apps/cli/tauri.js build --no-bundle --ci -- --locked
 ```
 
-This builds the frontend and enables Tauri's `custom-protocol` asset embedding.
-Bare `cargo build --release` is only a Rust compilation check: it can still
-produce a development-mode WebView that loads `localhost:1420`. Do not deliver
-that executable as a standalone GUI. Validate the release executable with Vite
-stopped, checking that the embedded page renders and a read-only Tauri command
-succeeds. Use `pnpm run tauri:build` when an NSIS installer is required.
+This embeds the frontend using Tauri's `custom-protocol`. Bare
+`cargo build --release` may still produce a WebView that loads localhost.
+Validate the standalone executable with Vite stopped: check the page renders
+and a read-only Tauri command succeeds.
 
-GUI appearance preferences use `gui-preferences.v1.json` in Tauri's application
-local-data directory as their versioned source of truth. The document stores the
-language, selected theme, UI font size, sidebar state, theme customization, and
-custom CSS profiles. WebView `localStorage` retains only a synchronized startup
-cache so the theme and font can be applied before the asynchronous Tauri command
-returns. When the JSON file does not exist, the application imports the existing
-startup cache once and creates it automatically. The workspace background remains
-the separate bounded `appearance/workspace-background.png` asset.
+GUI preferences are stored in `gui-preferences.v1.json` in Tauri's local-data
+directory. `localStorage` is a startup cache, imported once if the file is
+missing. The workspace background is stored separately at
+`appearance/workspace-background.png`.
 
-Refresh `server/runtime/common/econ/cs2-lib-econ-index.v1.json` only in the
-common repository by updating the exact `@ianlucas/cs2-lib` dependency and
-lockfile under its `tools/cs2-lib-data`, then running `npm.cmd run generate`
-there. Release and pin that shared change through its consumers. Do not add or
-patch item IDs in the generated JSON or create consumer-local copies.
+To refresh econ data, update the exact `@ianlucas/cs2-lib` dependency and lockfile
+in `server/runtime/common/tools/cs2-lib-data`, then run `npm.cmd run generate`
+there. Commit the shared output and affected consumers together; do not patch
+generated item IDs or copy the catalog into consumers.
 
 Build the supported desktop target:
 
@@ -321,9 +224,6 @@ Build the supported desktop target:
 cd desktop\gui
 pnpm run tauri:build --target x86_64-pc-windows-msvc -- --locked
 ```
-
-Debug Rust conversion is intentionally slow. Use release builds for performance
-measurements.
 
 ## Converter Invariants
 
@@ -397,19 +297,9 @@ pre-roll performs full pawn preparation at most once for each pre-roll token.
 Remaining readiness checks use a bounded 50 ms cadence; polls must not perform
 full-roster inventory or entity reconstruction.
 
-`test-css.ps1` runs the CSS component's `tests/DemoTracer.Tests` suite and
-recursively checks production code under `src/DemoTracer`, excluding `bin/` and
-`obj/`. Existing file limits follow each filename across responsibility
-directories. It enforces the managed-source boundaries: the
-CounterStrikeSharp entry point remains a small composition root and ordinary
-source files cannot grow past the maintained limit. Playback planning, playoff,
-replay-target safety, global teardown, slot lifecycle, and loaded metadata remain
-separate domains. Control commands are grouped by alignment, cosmetics, and
-general diagnostics. Replay loadout orchestration is kept apart from weapon
-alignment, inventory observation, and entity mutation. The `.dtr` reader keeps
-format entry, section decoding, payload decoding, and semantic validation in
-separate files. Armed, sequence, and playoff reset invariants belong to
-`ReplayPlanState`; the companion API assembly remains contract-only.
+`test-css.ps1` runs the managed regression suite and checks source boundaries
+and file-size limits. Keep the plugin entry point small, the companion API
+contract-only, and ownership state in `ReplaySlotRegistry` / `ReplayPlanState`.
 
 ## Packaging
 
@@ -420,15 +310,8 @@ hotfix:
 - `demotracer-gui-v<gui-version>.exe`: NSIS desktop installer.
 - `demotracer-css-v<playback-version>.zip`: compatible CS2 plugin bundle.
 
-The desktop app checks the signed stable GUI manifest at
-`https://releases.detr.site/channels/stable/latest.json` on startup. A newer
-version is shown with localized release notes and is installed only after user
-confirmation. Tauri verifies the updater signature before starting the passive
-NSIS install. The same manifest advertises the compatible CSS bundle under its
-own version and release notes. Its immutable
-release URL, SHA-256 digest, and minisign signature are verified before the
-existing receipt and per-file validation changes CS2, with one rollback
-preserved. Local CSS ZIP installation remains available as a fallback.
+The updater verifies signed GUI and Playback downloads before installation.
+See [Online behavior](ONLINE_SERVICES.md) for requests and user confirmation.
 
 ```powershell
 .\tooling\scripts\package-release.ps1 `
@@ -451,7 +334,7 @@ uploading a duplicate under the GUI version:
 The release contract check verifies the independent GUI and Playback versions,
 updater configuration, and ABI/API gates before packaging.
 `package-release.ps1` rebuilds the NSIS installer and, when both versions are
-the same, the CSS bundle. It then creates two deliberately separate directories:
+the same, the CSS bundle. It creates two output directories:
 
 - `dist/release-v<version>` contains only the public GitHub assets: the GUI EXE
   and CSS ZIP.

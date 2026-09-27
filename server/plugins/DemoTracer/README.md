@@ -2,10 +2,9 @@
 
 The CounterStrikeSharp playback component for CS2 DemoTracer, maintained in
 [`unicbm/demotracer`](https://github.com/unicbm/demotracer/tree/main/server/plugins/DemoTracer).
-The runtime assembly and plugin directory remain `DemoTracer`; the companion
-capability remains `demotracer:api` (API 7).
+Assembly: `DemoTracer`. Companion capability: `demotracer:api` (API 7).
 
-## Repository layout
+## Source layout
 
 - [`src/DemoTracer`](src/DemoTracer): the plugin project, grouped by responsibility.
 - [`tests/DemoTracer.Tests`](tests/DemoTracer.Tests): the complete managed regression suite.
@@ -13,10 +12,9 @@ capability remains `demotracer:api` (API 7).
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md): source map, dependencies, build, and package guidance.
 - [`tools`](tools): standalone validation and packaging entry points.
 
-Clone recursively, then run with .NET 10:
+With .NET 10, run from `server/plugins/DemoTracer`:
 
 ```powershell
-git submodule update --init --recursive
 pwsh -NoProfile -File tools/check.ps1
 pwsh -NoProfile -File tools/package.ps1
 ```

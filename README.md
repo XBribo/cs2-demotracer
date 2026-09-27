@@ -26,40 +26,25 @@
   <sub>Inspect a converted match, choose where playback starts, and copy the ready-to-run server command.</sub>
 </p>
 
-## Playback Requirements for v1.5.0
+## Get Started
 
-Playback v1.5.0 uses Metamod's shared **KHook** engine for
-BotController and BotHider function and virtual hooks. Hook registration,
-chaining, and removal use the same engine as other KHook consumers, replacing
-the runtimes' separate hook implementations.
+1. Download the Windows x64 installer (`demotracer-gui-vVERSION.exe`) from the
+   [latest release](https://github.com/unicbm/demotracer/releases/latest).
+   The app requires Windows 10/11 and Microsoft Edge WebView2.
+2. Analyze a demo, or import up to eight at once. Split recordings are merged
+   automatically. Select rounds and export them to the local replay library.
+3. For playback, prepare a local Windows x64 CS2 server with **Metamod 2.0 build 1469+
+   (plugin API 18)** and a **KHook-enabled CounterStrikeSharp build**. See the
+   [server requirements](server/README.md#shared-hook-runtime) for exact pins.
+4. In **Settings → CS2**, select the CS2 folder and install the matched playback
+   bundle (`demotracer-css-vVERSION.zip`). Metamod and CounterStrikeSharp are
+   installed separately. Update the GUI first and keep the bundle's DLLs together.
+5. Open a converted match and copy its playback command to the server console.
 
-This release requires **Metamod 2.0 build 1469+ (plugin API 18)** and a
-**KHook-enabled CounterStrikeSharp build**. Older API 17 Metamod installations
-cannot load these native plugins. Playback orchestration still uses
-CounterStrikeSharp; see the pinned [server requirements](server/README.md#shared-hook-runtime)
-before installing the playback bundle.
-
-Update the GUI first, then install the complete v1.5.0 playback bundle. Metamod
-and CounterStrikeSharp are external prerequisites and are not included in the
-bundle. Do not mix DLLs from different builds.
-
-## From Demo to Replay
-
-DemoTracer is a matched Windows desktop app and CS2 playback bundle. Parsing,
-analysis, conversion, archive management, environment checks, and updates are
-handled from one GUI:
-
-1. **Analyze** one demo or import up to eight demos as a batch. Split match
-   recordings are recognized and merged automatically.
-2. **Select** the rounds and fidelity options you want. DemoTracer reports
-   suspicious rounds and warns when the source demo lacks replay input data.
-3. **Organize** converted matches in a searchable local library by map, team,
-   player, date, platform, and notes.
-4. **Replay** a single round or a sequence through bots, using commands built
-   by the app for the matched server plugin.
-
-Parsing and export run locally through the Rust backend linked into the desktop
-app. There is no separate converter CLI to install or maintain.
+Analysis and conversion run locally and do not require a CS2 server or developer
+tools. Playback controls bots only. Installation inspection checks bundle files
+and runtime ABI/API heartbeats; it does not verify the host's KHook backend or
+compatibility with other plugins.
 
 ## Desktop Workflow
 
@@ -79,12 +64,8 @@ roster, round timeline, playback presets, and generated commands.
   <sub>Review demo-backed player identities, loadouts, stickers, charms, knives, gloves, and weapon finishes.</sub>
 </p>
 
-Cosmetic and identity data is evidence-gated: DemoTracer preserves what the
-demo actually contains and avoids inventing missing values. Selected items can
-also be handed off to the supported Inventory Simulator workflow. During
-playback, DemoTracer passes validated cosmetic parameters to the matched
-BotRandomizer provider; BotRandomizer alone applies them during natural bot
-spawn and item construction.
+Appearance data comes from the demo. Selected items can be sent to Inventory
+Simulator; during playback, BotRandomizer applies them to bots.
 
 ## What Can Be Replayed
 
@@ -96,13 +77,9 @@ Depending on the source demo and selected options, a replay can preserve:
 - demo-backed avatars, agents, crosshairs, viewmodels, knives, gloves, weapon
   finishes, stickers, charms, music kits, and scoreboard details.
 
-Valid subtick input and referenced shooting history are always exported when
-present. Freeze-time pre-roll follows the demo's contiguous freeze phase, with
-an internal 120-second safety cap; neither behavior requires a user setting.
-
-Movement playback uses maintained movement and input hooks rather than
-teleporting bots along a drawn route. If a source demo omits essential raw
-input, the desktop app reports that limitation before conversion.
+Movement uses native movement and input hooks. The app warns when a demo lacks
+essential input. Available subtick input and shooting history are exported
+automatically; freeze-time pre-roll follows the demo, capped at 120 seconds.
 
 ## Playback Results
 
@@ -129,75 +106,30 @@ input, the desktop app reports that limitation before conversion.
   </tr>
 </table>
 
-## Get Started
+## Data and Updates
 
-Download the two Windows x64 assets from the
-[latest official release](https://github.com/unicbm/demotracer/releases/latest):
-
-- `demotracer-gui-vVERSION.exe` — desktop installer.
-- `demotracer-css-vVERSION.zip` — matched playback plugins and native runtimes.
-
-The desktop app supports Windows 10 and Windows 11 x64 and requires Microsoft
-Edge WebView2. Demo analysis, conversion, and library management do not require
-Python, Node.js, Rust, .NET, or a running CS2 server after installation.
-
-To play an exported replay, use a local Windows x64 CS2 server with
-[Metamod:Source](https://www.sourcemm.net/) and
-[CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp).
-Use Metamod 2.0 build 1469+ and the KHook-enabled CounterStrikeSharp source
-baseline listed in the [playback server requirements](server/README.md#shared-hook-runtime).
-In **Settings → CS2**, select the CS2 folder, inspect the
-installation, and install the matched playback bundle. Inspection reports file
-integrity and fresh DemoTracer ABI/API heartbeat evidence separately. It does
-not automatically verify the installed Metamod plugin API, CSS KHook backend,
-or compatibility with other plugins; those remain unverified. A successful
-bundle installation confirms the package was installed, not that the server
-can load it. Inspection results show their check time and are not restored
-from an earlier desktop session.
-
-## Local-First and Defensive
-
-- Demo parsing, replay generation, archives, configuration, and logs stay on
-  the local machine.
-- Optional update, Steam profile, and anonymous telemetry behavior is
-  documented in [Online behavior](docs/ONLINE_SERVICES.md) and
-  [Telemetry](docs/TELEMETRY.md).
-- Replay control is for bots on a local server and must never be assigned to
-  human players. DemoTracer is not matchmaking or cheating software.
-- Desktop releases and playback bundles use matched product sources;
-  `.dtr`, manifest, runtime and companion API contracts are validated explicitly.
+Demos, generated replays, archives and logs stay on your machine. Update checks,
+Steam profile requests and telemetry are described in
+[Online behavior](docs/ONLINE_SERVICES.md). Anonymous aggregate statistics are
+enabled by default; active-user estimates require opt-in.
 
 Only artifacts attached by `unicbm` to this repository's GitHub Releases are
-official builds. See the [Trademark and Official Build Policy](TRADEMARKS.md).
+official builds. See [Trademarks](TRADEMARKS.md).
 
-## Source and Component Maintenance
+## Development and Reference
 
-DemoTracer owns its GUI, converter, playback plugin, bot runtimes and shared
-infrastructure in one working tree. Only the maintained parser fork at
-`third_party/demoparser` is a Git submodule. `components.json` records source
-ownership; product modules use the product commit, and the parser uses its
-exact gitlink. Public API/ABI and installed DLL names are unchanged.
+```powershell
+git clone --recurse-submodules https://github.com/unicbm/demotracer.git
+```
 
-The playback project stays in `server/plugins/DemoTracer/src/DemoTracer`, with
-configuration in `config` and tests in `tests/DemoTracer.Tests`.
+The GUI, converter, playback plugin and bot runtimes are maintained here.
+Only `third_party/demoparser` is a submodule.
 
-`git clone --recurse-submodules https://github.com/unicbm/demotracer.git`
-initializes the pinned parser. Existing checkouts can run
-`git submodule update --init --recursive`.
-
-Change product modules and their consumers in one PR. CI selects affected
-checks; release validation runs the complete suite. BotRandomizer retains its
-standalone package and API for ordinary bot servers and Bot Improver Panel.
-See [Development](docs/DEVELOPMENT.md) for validation and source history.
-
-## Documentation
-
-- [User documentation](docs/README.md) — product guides and maintained references.
-- [Commands](docs/COMMANDS.md) — playback commands, options, and runtime defaults.
-- [`.dtr` format](docs/FORMAT.md) — binary layout, validation, and decoder limits.
-- [Development](docs/DEVELOPMENT.md) — architecture, source builds, validation,
-  native tooling, and release packaging.
-- [Contributing](CONTRIBUTING.md) — contribution workflow and repository boundaries.
+- [Development](docs/DEVELOPMENT.md): source map, builds, tests and packaging.
+- [Commands](docs/COMMANDS.md): playback commands and defaults.
+- [Format](docs/FORMAT.md): `.dtr` layout and decoder limits.
+- [Documentation](docs/README.md): all references.
+- [Contributing](CONTRIBUTING.md): contribution workflow.
 
 ## Credits and License
 

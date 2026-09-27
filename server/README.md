@@ -1,7 +1,6 @@
 # Playback server
 
-This area contains everything installed on a local CS2 server for `.dtr`
-playback. It is deliberately separate from the desktop converter.
+Server modules for `.dtr` playback:
 
 | Path | Responsibility |
 | --- | --- |
@@ -9,19 +8,9 @@ playback. It is deliberately separate from the desktop converter.
 | [`runtime/`](runtime/) | Product bot runtime modules and their public APIs |
 | [`runtime/common/`](runtime/common/) | Shared native utilities, companion API, contracts and econ data |
 
-The product release builds matched modules from one product revision for its
-playback bundle. Do not mix arbitrary binaries: the manifest, native ABI,
-BotHider API, and CounterStrikeSharp reader must remain compatible.
-Source and tests are maintained together here. Original upstream changes are
-reviewed and imported deliberately. Only the parser remains a source submodule;
-server builds use direct references to the shared runtime modules.
-
-The CSS project is `plugins/DemoTracer/src/DemoTracer/DemoTracer.csproj` and
-builds to `src/DemoTracer/bin/<Configuration>/net10.0` inside the component.
-The source tree separates lifecycle, configuration, commands, native interop,
-playback, presentation, cosmetics, projectiles, voice and replay data. The
-component's [development guide](plugins/DemoTracer/docs/DEVELOPMENT.md) describes
-those responsibilities.
+Install the matched playback bundle. See the
+[plugin development guide](plugins/DemoTracer/docs/DEVELOPMENT.md) for source
+layout and build commands.
 
 ## Projectile hook compatibility profile
 
@@ -47,15 +36,10 @@ changing either implementation. No additional native hook engine is introduced.
 
 ## Shared hook runtime
 
-BotRandomizer is distributed as one common provider for ordinary bot servers,
-Bot Improver Panel and DemoTracer. Build the public package with
-`server/runtime/BotRandomizer/tools/package.ps1`; `package-server.ps1` consumes
-that package, or an explicit `-BotRandomizerPackage` ZIP with matching version,
-API, KHook pins and file hashes. It never creates a second replay implementation.
-Its submodule is already the independently buildable maintained repository,
-including the shared API, tests and CI. Submit fixes and releases there, then
-update the product's pinned release. See the provider's
-[README](runtime/BotRandomizer/README.md) and [API](runtime/BotRandomizer/API.md).
+BotRandomizer serves ordinary bot servers and DemoTracer through the same
+provider and API. `package-server.ps1` consumes its standalone package, or an
+explicit `-BotRandomizerPackage` ZIP, checking version, API, host pins and hashes.
+Source and fixes belong in [`runtime/BotRandomizer`](runtime/BotRandomizer/README.md).
 
 BotController and BotHider use the single [KHook](https://github.com/Kenzzer/KHook)
 engine exported by Metamod for both function and virtual hooks. The playback
@@ -80,19 +64,9 @@ Product DLLs consume Metamod's engine; they do not embed a separate copy.
 Signature scanning also uses KHook so signatures still match original engine
 bytes when another consumer has already installed a detour.
 
-BotRandomizer participates in this same engine through CounterStrikeSharp:
-`GiveNamedItemFunc.Hook/Unhook` delegates to the host's dynamic hooks, which
-register and remove hooks with Metamod's KHook interface in the pinned CSS
-build. Its attribute writer and item-view constructor are native function
-calls, not separate detours; CSS resolves their signatures through KHook.
-Do not add a private hook engine or a second native Randomizer hook layer.
-The NuGet API package alone does not select the host backend.
-
-Shared KHook coordinates hook chaining and original function execution. Cosmetic
-ownership remains the responsibility of the single BotRandomizer provider and
-its API v3 plans. Loading two cosmetic providers can still overwrite inventories
-even when both use KHook. A future common upstream Randomizer must preserve both
-this host requirement and the single-writer plan lifecycle.
+BotRandomizer hooks `GiveNamedItem` through CounterStrikeSharp's KHook backend.
+KHook coordinates detours; it does not coordinate cosmetic writes. Use one
+BotRandomizer provider, with [API v3](runtime/BotRandomizer/API.md) ownership plans.
 
 The shared hook integration tests build the pinned upstream engine only for
 testing. After initializing its recursive submodules, run from the repo root:
@@ -104,9 +78,8 @@ ctest --test-dir server/runtime/common/.build/native-tests -C Release --output-o
 ```
 
 The current playback contract requires BotController ABI 21, minor 44 or newer.
-Source layout does not change the replay format or public control API. The GUI rejects install receipts from the older
-hook runtime and the managed heartbeat reports older BotController binaries
-as incompatible.
+The GUI rejects install receipts from the older hook runtime. The managed
+heartbeat reports older BotController binaries as incompatible.
 
 Presentation and cosmetic plans are owned by the consumer's lifetime, not a
 periodically renewed timeout. BotHider API v3 and BotRandomizer API v3 require
