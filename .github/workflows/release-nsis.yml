@@ -93,7 +93,7 @@ jobs:
       - name: Upload unsigned NSIS installer
         uses: actions/upload-artifact@v7
         with:
-          name: demotracer-gui-${{ github.ref_name }}-windows-x64
+          name: demotracer-gui-${{ github.sha }}-windows-x64
           path: |
             desktop/gui/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             desktop/gui/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/component-sources.json
