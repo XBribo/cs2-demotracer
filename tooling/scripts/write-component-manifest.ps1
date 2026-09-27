@@ -6,20 +6,20 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Push-Location $repoRoot
 try {
-    & node server/runtime/common/tools/check-components.mjs
+    & node tooling/scripts/check-source-layout.mjs --require-checkout
     if ($LASTEXITCODE -ne 0) { throw 'Cannot record mismatched component sources.' }
     $registry = Get-Content components.json -Raw | ConvertFrom-Json
     $productCommit = (& git rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Cannot read product commit.' }
     $components = @($registry.components | ForEach-Object {
         $componentPath = Join-Path $repoRoot $_.path
-        $commit = (& git -C $componentPath rev-parse HEAD).Trim()
+        $commit = if ($_.source -eq 'submodule') { (& git -C $componentPath rev-parse HEAD).Trim() } else { $productCommit }
         if ($LASTEXITCODE -ne 0) { throw "Cannot read component commit: $($_.id)" }
         [ordered]@{
             id = $_.id
             repository = "https://github.com/$($_.repository)"
             commit = $commit
-            source_version = (Get-Content (Join-Path $componentPath 'version.txt') -Raw).Trim()
+            source_version = if ($_.source -eq 'submodule') { (Get-Content (Join-Path $componentPath 'version.txt') -Raw).Trim() } else { (Get-Content desktop/gui/package.json -Raw | ConvertFrom-Json).version }
         }
     })
     $manifest = [ordered]@{ schema_version = 1; product_commit = $productCommit; components = $components }

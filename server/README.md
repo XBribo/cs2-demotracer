@@ -5,7 +5,7 @@ playback. It is deliberately separate from the desktop converter.
 
 | Path | Responsibility |
 | --- | --- |
-| [`plugins/DemoTracer/`](plugins/DemoTracer/) | Pinned `cs2-css-demotracer` component; orchestration and commands in `src/DemoTracer`, configuration in `config`, regression suite in `tests/DemoTracer.Tests` |
+| [`plugins/DemoTracer/`](plugins/DemoTracer/) | Product playback module; orchestration and commands in `src/DemoTracer`, configuration in `config`, regression suite in `tests/DemoTracer.Tests` |
 | [`runtime/`](runtime/) | Pinned bot runtime components and their own public APIs |
 | [`runtime/common/`](runtime/common/) | Shared native utilities, companion API, contracts and econ data |
 
@@ -104,8 +104,7 @@ ctest --test-dir server/runtime/common/.build/native-tests -C Release --output-o
 ```
 
 The current playback contract requires BotController ABI 21, minor 44 or newer.
-Moving source into component repositories does not itself change the replay
-format or public control API. The GUI rejects install receipts from the older
+Source layout does not change the replay format or public control API. The GUI rejects install receipts from the older
 hook runtime and the managed heartbeat reports older BotController binaries
 as incompatible.
 

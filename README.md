@@ -164,7 +164,7 @@ from an earlier desktop session.
   [Telemetry](docs/TELEMETRY.md).
 - Replay control is for bots on a local server and must never be assigned to
   human players. DemoTracer is not matchmaking or cheating software.
-- Desktop releases and playback bundles select compatible component releases;
+- Desktop releases and playback bundles use matched product sources;
   `.dtr`, manifest, runtime and companion API contracts are validated explicitly.
 
 Only artifacts attached by `unicbm` to this repository's GitHub Releases are
@@ -172,27 +172,23 @@ official builds. See the [Trademark and Official Build Policy](TRADEMARKS.md).
 
 ## Source and Component Maintenance
 
-This repository owns the GUI, product integration and matched release bundle.
-The parser, converter, playback plugin, bot runtimes and shared infrastructure
-are maintained in their own repositories and pinned here as Git submodules.
-[components.json](components.json) records their repository and mount paths.
+DemoTracer owns its GUI, converter, playback plugin, bot runtimes and shared
+infrastructure in one working tree. Only the maintained parser fork at
+`third_party/demoparser` is a Git submodule. `components.json` records source
+ownership; product modules use the product commit, and the parser uses its
+exact gitlink. Public API/ABI and installed DLL names are unchanged.
 
-The [`cs2-css-demotracer`](https://github.com/unicbm/cs2-css-demotracer) playback
-component is mounted at `server/plugins/DemoTracer`, with production code in
-`src/DemoTracer`, configuration templates in `config`, and its regression suite
-in `tests/DemoTracer.Tests`.
+The playback project stays in `server/plugins/DemoTracer/src/DemoTracer`, with
+configuration in `config` and tests in `tests/DemoTracer.Tests`.
 
-```powershell
-git clone --recurse-submodules https://github.com/unicbm/demotracer.git
-# For an existing checkout:
-git submodule update --init --recursive
-```
+`git clone --recurse-submodules https://github.com/unicbm/demotracer.git`
+initializes the pinned parser. Existing checkouts can run
+`git submodule update --init --recursive`.
 
-Component fixes go through that component's checks, PR and release first. The
-`automation/components` PR then proposes updated release gitlinks for product
-validation. It follows our maintained component releases, without automatically
-merging original upstream code. Component source versions, GUI/Playback versions
-and API/ABI versions remain independent; see [Development](docs/DEVELOPMENT.md).
+Change product modules and their consumers in one PR. CI selects affected
+checks; release validation runs the complete suite. BotRandomizer retains its
+standalone package and API for ordinary bot servers and Bot Improver Panel.
+See [Development](docs/DEVELOPMENT.md) for validation and source history.
 
 ## Documentation
 

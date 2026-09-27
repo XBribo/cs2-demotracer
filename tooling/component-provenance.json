@@ -1,0 +1,44 @@
+[
+  {
+    "id": "common",
+    "path": "server/runtime/common",
+    "former_repository": "unicbm/cs2-dtr-common",
+    "imported_commit": "c6b91341eeb0677dc7f84a7eba6d52180ab1ad8e",
+    "history_ref": "component-archive/common/heads/main"
+  },
+  {
+    "id": "controller",
+    "path": "server/runtime/BotController",
+    "former_repository": "unicbm/cs2-dtr-controller",
+    "imported_commit": "0968663d5dea6b1d8d911a5a7b52e1ac3198bc60",
+    "history_ref": "component-archive/controller/heads/main"
+  },
+  {
+    "id": "hider",
+    "path": "server/runtime/BotHider",
+    "former_repository": "unicbm/cs2-dtr-hider",
+    "imported_commit": "53c36b16644dd29b3f71408d38af3693d5ec7d20",
+    "history_ref": "component-archive/hider/heads/main"
+  },
+  {
+    "id": "randomizer",
+    "path": "server/runtime/BotRandomizer",
+    "former_repository": "unicbm/cs2-dtr-randomizer",
+    "imported_commit": "4970bd4892cebb8f55f680e49e0d718e312e8432",
+    "history_ref": "component-archive/randomizer/heads/main"
+  },
+  {
+    "id": "converter",
+    "path": "desktop/converter",
+    "former_repository": "unicbm/cs2-dtr-converter",
+    "imported_commit": "7be30c553fb78d5895d6e10829b6eee61b988a80",
+    "history_ref": "component-archive/converter/heads/main"
+  },
+  {
+    "id": "css",
+    "path": "server/plugins/DemoTracer",
+    "former_repository": "unicbm/cs2-css-demotracer",
+    "imported_commit": "c6f5fe4215b90ae962abf8254393409a435261ce",
+    "history_ref": "component-archive/css/heads/main"
+  }
+]

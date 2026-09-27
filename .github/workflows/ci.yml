@@ -6,6 +6,11 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      full:
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -15,6 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  CI_FULL: ${{ inputs.full || false }}
   CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
@@ -22,13 +28,28 @@ jobs:
   gate:
     runs-on: windows-latest
     timeout-minutes: 10
+    outputs:
+      parser: ${{ steps.scope.outputs.parser }}
+      converter: ${{ steps.scope.outputs.converter }}
+      desktop: ${{ steps.scope.outputs.desktop }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+      playback: ${{ steps.scope.outputs.playback }}
+      nativeCommon: ${{ steps.scope.outputs.nativeCommon }}
+      fuzz: ${{ steps.scope.outputs.fuzz }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           submodules: recursive
+
+      - name: Select affected checks
+        id: scope
+        run: node tooling/scripts/ci-scope.mjs
+
+      - name: Test CI impact selection
+        run: node --test tooling/scripts/ci-scope.test.mjs
 
       - name: Install Rust formatter
         uses: dtolnay/rust-toolchain@stable
@@ -43,8 +64,8 @@ jobs:
         working-directory: desktop/gui/src-tauri
         run: cargo fmt --check
 
-      - name: Check matched component pins
-        run: node server/runtime/common/tools/check-components.mjs
+      - name: Check source ownership and parser pin
+        run: node tooling/scripts/check-source-layout.mjs --require-checkout
 
       - name: Check release contract
         shell: pwsh
@@ -94,6 +115,7 @@ jobs:
 
   converter:
     needs: gate
+    if: ${{ needs.gate.outputs.converter == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 10
 
@@ -115,18 +137,18 @@ jobs:
 
       - name: Test converter
         working-directory: desktop/converter
-        run: cargo test --locked
+        shell: pwsh
+        run: tools/check.ps1
 
   frontend:
     needs: gate
+    if: ${{ needs.gate.outputs.frontend == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - name: Read professional identity source pin
         id: pro-steamid-source
@@ -187,6 +209,7 @@ jobs:
 
   desktop-rust:
     needs: gate
+    if: ${{ needs.gate.outputs.desktop == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 15
 
@@ -212,14 +235,13 @@ jobs:
 
   css:
     needs: gate
+    if: ${{ needs.gate.outputs.playback == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - name: Install .NET
         uses: actions/setup-dotnet@v6
@@ -236,16 +258,24 @@ jobs:
 
       - name: Build and test CSS plugin
         shell: pwsh
-        run: tooling\scripts\test-css.ps1
+        run: tooling\scripts\test-css.ps1 -SkipRandomizer
+
+      - name: Stage tested managed binaries
+        shell: pwsh
+        run: tooling/scripts/save-managed-artifacts.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: managed-playback
+          path: tmp/ci-managed/
+          if-no-files-found: error
 
   randomizer-standalone:
     needs: gate
+    if: ${{ needs.gate.outputs.playback == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -254,36 +284,28 @@ jobs:
           dotnet-version: 10.0.x
       - name: Test and package maintained Randomizer
         shell: pwsh
-        run: server/runtime/BotRandomizer/tools/check.ps1
+        run: |
+          server/runtime/BotRandomizer/tools/check.ps1
+          server/runtime/BotRandomizer/tools/package.ps1 -SkipBuild
+          server/runtime/BotRandomizer/tools/test-package.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: randomizer-package
+          path: |
+            server/runtime/BotRandomizer/dist/BotRandomizer-v*.zip
+            server/runtime/BotRandomizer/dist/BotRandomizer-v*.zip.sha256
+          if-no-files-found: error
 
   native-windows:
     needs: gate
+    if: ${{ needs.gate.outputs.nativeCommon == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Configure native replay safety tests
-        run: cmake -S server\runtime\BotController\tests -B server\runtime\BotController\out\replay-safety-ci -A x64
-
-      - name: Build native replay safety tests
-        run: cmake --build server\runtime\BotController\out\replay-safety-ci --config Release
-
-      - name: Test native replay safety
-        run: ctest --test-dir server\runtime\BotController\out\replay-safety-ci -C Release --output-on-failure
-
-      - name: Configure native presentation tests
-        run: cmake -S server/runtime/BotHider/tests -B server/runtime/BotHider/.build/tests -A x64
-
-      - name: Build native presentation tests
-        run: cmake --build server/runtime/BotHider/.build/tests --config Release
-
-      - name: Test native presentation
-        run: ctest --test-dir server/runtime/BotHider/.build/tests -C Release --output-on-failure
 
       - name: Read shared hook source pin
         id: metamod-source
@@ -313,14 +335,13 @@ jobs:
 
   native-fuzz-smoke:
     needs: gate
+    if: ${{ needs.gate.outputs.fuzz == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - name: Configure production replay ABI fuzz target
         run: >-
@@ -349,6 +370,7 @@ jobs:
 
   parser:
     needs: gate
+    if: ${{ needs.gate.outputs.parser == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -365,6 +387,7 @@ jobs:
 
   native-products:
     needs: gate
+    if: ${{ needs.gate.outputs.playback == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 30
     strategy:
@@ -372,8 +395,6 @@ jobs:
         component: [BotController, BotHider]
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
@@ -397,13 +418,13 @@ jobs:
           repository: alliedmodders/hl2sdk
           ref: ${{ steps.native.outputs.sdk }}
           path: .external/hl2sdk
-      - name: Build full native DLL and managed provider
+      - name: Test and build full native DLL
         shell: pwsh
         env:
           MMSOURCE_DEV: ${{ github.workspace }}/.external/metamod-khook
           HL2SDKCS2: ${{ github.workspace }}/.external/hl2sdk
           PROTOC: ${{ github.workspace }}/.external/hl2sdk/devtools/bin/protoc.exe
-        run: server/runtime/${{ matrix.component }}/tools/check.ps1 -NativeBuild
+        run: server/runtime/${{ matrix.component }}/tools/check.ps1 -NativeBuild -SkipManagedBuild
 
       - name: Save native package for product integration
         uses: actions/upload-artifact@v7
@@ -414,6 +435,7 @@ jobs:
 
   playback-package:
     needs: [gate, css, randomizer-standalone, native-products]
+    if: ${{ needs.gate.outputs.playback == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -434,13 +456,22 @@ jobs:
         with:
           name: native-BotHider
           path: server/runtime/BotHider/build/package
+      - uses: actions/download-artifact@v8
+        with:
+          name: managed-playback
+          path: .
+      - uses: actions/download-artifact@v8
+        with:
+          name: randomizer-package
+          path: dist/randomizer
       - name: Assemble matched playback bundle and source manifest
         shell: pwsh
         run: |
           $plugin = Get-Content server/plugins/DemoTracer/src/DemoTracer/Lifecycle/DemoTracerPlugin.cs -Raw
           $version = [regex]::Match($plugin, 'ModuleVersion\s*=>\s*"([^"]+)"').Groups[1].Value
           if (-not $version) { throw 'Playback version not found' }
-          tooling/scripts/package-server.ps1 -Version $version
+          $contract = Get-Content shared/contracts/playback-contract.v1.json -Raw | ConvertFrom-Json
+          tooling/scripts/package-server.ps1 -Version $version -SkipCssBuild -BotRandomizerPackage "dist/randomizer/BotRandomizer-v$($contract.bot_randomizer.provider_version).zip"
       - uses: actions/upload-artifact@v7
         with:
           name: demotracer-playback-windows-x64
@@ -466,22 +497,8 @@ jobs:
     timeout-minutes: 2
 
     steps:
-      - name: Require every CI job to pass
-        if: >-
-          ${{
-            needs.gate.result != 'success' ||
-            needs.parser.result != 'success' ||
-            needs.native-products.result != 'success' ||
-            needs.playback-package.result != 'success' ||
-            needs.converter.result != 'success' ||
-            needs.frontend.result != 'success' ||
-            needs.desktop-rust.result != 'success' ||
-            needs.css.result != 'success' ||
-            needs.randomizer-standalone.result != 'success' ||
-            needs.native-windows.result != 'success' ||
-            needs.native-fuzz-smoke.result != 'success'
-          }}
-        run: exit 1
-
-      - name: CI complete
-        run: echo "All CI jobs passed."
+      - name: Require selected checks to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e 'const n=JSON.parse(process.env.RESULTS); if(n.gate.result!=="success" || Object.values(n).some(x=>!["success","skipped"].includes(x.result))) process.exit(1)'

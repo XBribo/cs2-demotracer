@@ -18,7 +18,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  full-validation:
+    uses: ./.github/workflows/ci.yml
+    with:
+      full: true
+
   build-windows-nsis:
+    needs: full-validation
     runs-on: windows-latest
     timeout-minutes: 20
 

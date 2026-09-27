@@ -7,4 +7,4 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
-# Maintained component gitlinks are updated from releases by update-components.yml.
+# The parser fork is updated deliberately after reviewing its source changes.

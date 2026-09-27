@@ -2,18 +2,18 @@
 
 ## Architecture
 
-This repository owns the GUI, product compatibility contract and release
-integration. The reusable components are independently maintained repositories
-mounted as Git submodules at the paths below. `components.json` records their
-maintained repositories, release branches and tag prefixes; Git records the
-exact selected commits.
+DemoTracer owns its GUI, converter, playback plugin, bot runtimes and shared
+infrastructure in one working tree. Only the maintained parser fork at
+`third_party/demoparser` is a Git submodule. `components.json` records source
+ownership; product modules use the product commit, and the parser uses its
+exact gitlink. Public API/ABI and installed DLL names are unchanged.
 
 | Path | Responsibility |
 | --- | --- |
 | `desktop/gui/` | Supported Tauri/React application and thin Rust command bridge |
 | `desktop/converter/` | Converter component: Rust analysis, `.dtr` writing, manifests, and validation |
 | `third_party/demoparser/` | Maintained `demoparser` branch with the minimal `parser` / `csgoproto` workspace |
-| `server/plugins/DemoTracer/` | `cs2-css-demotracer` component: production project in `src/DemoTracer`, configuration in `config`, tests in `tests/DemoTracer.Tests` |
+| `server/plugins/DemoTracer/` | Playback module: production project in `src/DemoTracer`, configuration in `config`, tests in `tests/DemoTracer.Tests` |
 | `server/runtime/common/csharp/DemoTracerApi/` | Contract-only companion API installed under CounterStrikeSharp `shared/` |
 | `server/runtime/BotController/` | Native replay buffers, movement/input injection, weapon control, and C ABI |
 | `server/runtime/BotHider/` | Native and managed bot identity/presentation provider |
@@ -28,11 +28,10 @@ exact selected commits.
 The Rust converter crate is the conversion truth source. The desktop backend
 calls it directly; there is no supported converter CLI. Future automation
 should use a separately versioned API instead of recreating a second UI.
-Its repository name is `cs2-dtr-converter`; the Cargo package and library remain
-`cs2-demotracer` and `cs2_demotracer`. Provider APIs live with their providers:
-BotController and BotHider under `csharp/`, and BotRandomizer under
-`BotRandomizerApi/`. They are referenced from each consumer's pinned `.deps`
-submodules instead of separate copies in this repository.
+Its Cargo package and library remain `cs2-demotracer` and `cs2_demotracer`.
+Provider APIs live with their providers: BotController and BotHider under
+`csharp/`, and BotRandomizer under `BotRandomizerApi/`. Consumers use direct
+references to these modules and the single `server/runtime/common` directory.
 
 The CSS project is
 `server/plugins/DemoTracer/src/DemoTracer/DemoTracer.csproj`. Its production code
@@ -116,28 +115,42 @@ For a fresh source checkout or after pulling a product pin update:
 git clone --recurse-submodules https://github.com/unicbm/demotracer.git
 # Or, inside an existing checkout:
 git submodule update --init --recursive
-node server\runtime\common\tools\check-components.mjs
+node tooling/scripts/check-source-layout.mjs --require-checkout
 ```
 
-The component-pin check verifies that recursive consumers use the same shared
-component revisions selected by the product. A mixed set of common, parser or
-provider revisions must be reconciled through consumer releases before product
-integration. Do not use `git submodule update --remote` to bypass the recorded
-release gitlinks.
+The source-layout check rejects nested product submodules and validates the
+single parser pin. Update the parser deliberately after reviewing its fork;
+do not use `git submodule update --remote` as a product update mechanism.
 
-Make a component change in its own repository and submit its PR there. Run its
-`tools/check.ps1` and any required live-server checks, then publish the reviewed
-component release. The release workflow manages that component's source version
-and changelog. Consumers and this product use the `automation/components` PR to
-propose released gitlinks; product CI validates the resulting bundle before merge.
-This automation follows our maintained repositories and release tags. Reviewing
-or importing original upstream changes remains a separate maintenance decision.
+Product changes, shared declarations and affected consumers land together.
+CI selects checks from the complete push/PR diff, including deleted paths.
+Shared contracts, common sources and build/CI tooling run all checks. GUI-only
+changes avoid server builds; server changes validate the matched playback
+bundle. Missing diff information falls back to the full suite. Manual CI and
+NSIS release workflows always run all checks. Packaging reuses tested managed
+binaries, native packages and the validated standalone Randomizer archive.
 
-GUI changes stay in `desktop/gui` in this repository. Component source versions,
-GUI/Playback product versions, `.dtr` and manifest versions, and public API/ABI
-versions are independent. A new source tag does not imply an API/ABI bump or a
-compatible bundle. Update the product contract and all affected readers/writers
-when a real compatibility change requires it.
+GUI/Playback versions and public API/ABI versions remain independent. Changing
+source layout does not change installed identities or compatibility contracts.
+The independent Randomizer package remains available as a CI artifact and can
+be attached to a product release without creating a separate source release PR.
+
+Do not request a second AI review for unchanged, already reviewed source or a
+mechanical version-only update. Review new runtime/contract changes and Action
+major-version or permission changes. Automated PR authorship is not a reason
+to skip deterministic checks. Keep cloud automatic reviews disabled and request
+additional AI reviews explicitly when useful.
+
+### Component history
+
+The six former product repositories were consolidated on 2026-09-27. Their
+imported commits and paths are recorded in
+[component-provenance.json](../tooling/component-provenance.json). Historical
+branches and source tags are retained in this repository under
+`component-archive/<id>/heads/*` and `component-archive/<id>/releases/*` tags.
+These tags preserve the original commit history; they are not product releases.
+Older product commits still contain historical gitlinks; use the archived
+component refs when reconstructing those revisions after repository retirement.
 
 ## Build and Test
 

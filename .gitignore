@@ -69,4 +69,4 @@
 __pycache__/
 *.pyc
 
-# Each maintained submodule owns its own build/cache exclusions.
+# Product modules retain their local build/cache exclusions.

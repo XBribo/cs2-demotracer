@@ -6,7 +6,8 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$DotnetPath = ""
+    [string]$DotnetPath = "",
+    [switch]$SkipRandomizer
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,6 +68,7 @@ Write-Host "Using $dotnet"
 Invoke-Dotnet $dotnet @("restore", $projectPath, "--configfile", $nugetConfigPath, "-m:1", "-nodeReuse:false", "-p:NuGetAudit=false")
 Invoke-Dotnet $dotnet @("build", $projectPath, "-c", $Configuration, "--no-restore", "-m:1", "-nodeReuse:false", "-p:UseSharedCompilation=false", "-p:NuGetAudit=false")
 Invoke-Dotnet $dotnet @("test", $projectPath, "-c", $Configuration, "--no-build", "--no-restore", "-m:1", "-nodeReuse:false")
+if (-not $SkipRandomizer) {
 Invoke-Dotnet $dotnet @("restore", $botRandomizerProvider, "--configfile", $nugetConfigPath, "-m:1", "-nodeReuse:false", "-p:NuGetAudit=false")
 Invoke-Dotnet $dotnet @("build", $botRandomizerProvider, "-c", $Configuration, "--no-restore", "-m:1", "-nodeReuse:false", "-p:UseSharedCompilation=false", "-p:NuGetAudit=false")
 foreach ($asset in @("BotRandomizer.dll", "cosmetic_catalog.json", "charm_placements.json", "cs2-lib-econ-index.v1.json")) {
@@ -75,4 +77,5 @@ foreach ($asset in @("BotRandomizer.dll", "cosmetic_catalog.json", "charm_placem
 }
 Invoke-Dotnet $dotnet @("restore", $botRandomizerSelfTest, "--configfile", $nugetConfigPath, "-m:1", "-nodeReuse:false", "-p:NuGetAudit=false")
 Invoke-Dotnet $dotnet @("run", "--project", $botRandomizerSelfTest, "-c", $Configuration, "--no-restore", "--", $botRandomizerCatalog, $replayEconIndex)
+}
 & (Join-Path $PSScriptRoot "check-demotracer-source-governance.ps1") -RepoRoot $repoRoot

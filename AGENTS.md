@@ -1,10 +1,9 @@
 # Agent Guidance
 
 This is the public GUI and product-integration repository for **DemoTracer**,
-whose product name is **CS2 DemoTracer**. The GUI remains here. Maintained parser,
-converter, server and shared-infrastructure repositories are pinned Git
-submodules, listed in `components.json`. Keep their selected releases, product
-contracts and packaging aligned.
+whose product name is **CS2 DemoTracer**. The GUI, converter, playback plugin, bot runtimes and shared infrastructure
+are product modules in this working tree. Only the maintained parser fork is
+a pinned Git submodule. Keep product contracts and packaging aligned.
 
 ## Project Boundaries
 
@@ -23,16 +22,18 @@ contracts and packaging aligned.
 
 ## Engineering Workflow
 
-- Clone with `--recurse-submodules`, or run `git submodule update --init
-  --recursive` before building. Preserve every recorded gitlink and recursive
-  dependency pin; do not replace components with copied source trees.
-- Make component changes in the owning repository, validate its own checks,
-  and publish its reviewed release before updating product pins. The
-  `automation/components` PR proposes maintained component release gitlinks;
-  it does not synchronize original upstream branches automatically.
-- Component source releases, GUI/Playback versions, and API/ABI versions are
-  independent. A source tag does not automatically change an API/ABI. Contract
-  changes still require coordinated readers, writers and integration checks.
+- Initialize the pinned parser with `git submodule update --init --recursive`.
+  Keep the parser gitlink; do not introduce submodules for product modules.
+- Change product modules and all affected consumers in one coherent change.
+  Shared contracts and generated catalogs have one source in
+  `server/runtime/common`; do not copy them into consumer directories.
+- GUI/Playback, standalone package and API/ABI versions remain independent.
+  Source movement does not itself require an API/ABI or DLL identity change.
+- Keep CI impact selection conservative. Shared/build changes and releases
+  require full validation; reuse tested artifacts when packaging.
+- Do not automatically request another AI review for unchanged source already
+  reviewed internally or mechanical release metadata. Review new source,
+  contracts, Action major versions and permission changes as appropriate.
 - Make the smallest evidence-backed change and run the narrowest relevant
   validation first.
 - Use release builds for performance and Windows installer checks.
@@ -52,7 +53,7 @@ contracts and packaging aligned.
 ## Validation
 
     git submodule update --init --recursive
-    node server\runtime\common\tools\check-components.mjs
+    node tooling/scripts/check-source-layout.mjs --require-checkout
     pwsh -NoProfile -File desktop\converter\tools\check.ps1
 
     cd desktop\gui
@@ -67,10 +68,10 @@ contracts and packaging aligned.
     git diff --check
 
 Native runtime changes additionally require the maintained CMake release build
-and CTest suite in the owning component. Shared native sources/tests live in
+and CTest suite for the affected module. Shared native sources/tests live in
 `server/runtime/common/native`, companion API in its `csharp/DemoTracerApi`,
 shared fields in its `contracts`, and the econ generator in its
-`tools/cs2-lib-data`. The `cs2-css-demotracer` component is mounted at
+`tools/cs2-lib-data`. The playback module lives at
 `server/plugins/DemoTracer`; its project and production source live under
 `src/DemoTracer`, organized by responsibility. Configuration templates live in
 `config`, and regression tests in `tests/DemoTracer.Tests`. Provider APIs remain
