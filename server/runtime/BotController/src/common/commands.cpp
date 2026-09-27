@@ -184,13 +184,13 @@ namespace BotController
     }
 }
 
-CON_COMMAND_F(bc_avatar_status, "Show native avatar publication and local HUD bridge status.", FCVAR_NONE)
+CON_COMMAND_F(bc_avatar_status, "Show server avatar publication status.", FCVAR_NONE)
 {
     BotController::Commands::PrintToCaller(context, "[BC avatar] %s\n", BotController::Avatars::Status());
 }
 
 CON_COMMAND_F(bc_avatar_override_probe,
-              "bc_avatar_override_probe <steamid64> <png_path>  Publish a diagnostic PNG through the native bridge.", FCVAR_NONE)
+              "bc_avatar_override_probe <steamid64> <png_path>  Publish a diagnostic PNG to the server string table.", FCVAR_NONE)
 {
     using namespace BotController;
     uint64_t id = 0;

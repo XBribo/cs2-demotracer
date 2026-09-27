@@ -8,7 +8,7 @@
 
 | 范围 | 维护真源 | 需要检查的内容 |
 | --- | --- | --- |
-| BotController | [gamedata.json](../server/runtime/BotController/configs/addons/BotController/gamedata.json) | server 签名、私有偏移、移动服务虚表槽，以及可选 engine2 / panorama HUD 桥接 |
+| BotController | [gamedata.json](../server/runtime/BotController/configs/addons/BotController/gamedata.json) | server 签名、私有偏移、移动服务虚表槽 |
 | BotHider | [gamedata.json](../server/runtime/BotHider/configs/addons/BotHider/gamedata.json) | server / engine2 签名、客户端列表和身份字段布局 |
 | 独立 BotRandomizer | [BotRandomizer.cs](../server/runtime/BotRandomizer/BotRandomizer.cs) | attribute writer 与 item-view constructor 的内联签名 |
 | 投掷物物理钩子 | [ProjectilePhysicsHook.cs](../server/plugins/DemoTracer/src/DemoTracer/Projectiles/ProjectilePhysicsHook.cs) | 入口、模块与函数体哈希、虚表和调用约定 |
@@ -30,11 +30,15 @@ CSS、Metamod 和可选依赖的维护边界见 [server requirements](../server/
 扫描通过不等于行为或全部私有布局验证通过。版本号相同但模块指纹变化时也应重新核验。
 投掷物钩子的受支持模块指纹由上述源码直接维护。
 
+2026-09-27 已移除头像客户端 HUD 桥接及其 4 条 engine2 / panorama 签名。
+上述 2026-09-23 扫描计数保留为历史基线，不代表当前签名数量。
+头像仅向服务器字符串表发布，客户端头像缓存刷新由游戏负责。
+
 本基线修复及以后必须保留的检查：
 
 | 范围 | 修复内容 | 验收要求 |
 | --- | --- | --- |
-| BotController | 更新武器、购买、视角、梯子和可选 HUD 签名 | 最佳武器依次查询槽 0/1/2；手枪只查询槽 1。唯一命中的切刀函数仍是错误目标 |
+| BotController | 更新武器、购买、视角和梯子签名 | 最佳武器依次查询槽 0/1/2；手枪只查询槽 1。唯一命中的切刀函数仍是错误目标 |
 | BotController 托管提供器 | 兼容原生模块加载时序 | 冷启动和热加载能完成能力注册，不能重复注册 |
 | BotHider | 更新配额 / 实体打包签名及客户端列表偏移 | 检查真实 Bot 接管与 HUD；API ready 不足以验收 |
 | 独立 BotRandomizer | 更新 attribute writer 签名 | 检查属性写入及所选外观；不能只确认插件加载 |

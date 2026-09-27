@@ -303,16 +303,14 @@ publication, not display on a remote client. `BotController_ClearAvatarOverride`
 and `BotController_ClearAvatarOverrides` restore preceding data, preserving a
 later writer's replacement. Call these functions on the server game thread.
 
-For a Windows listen server, the optional local client bridge attaches to
-`ServerAvatarOverrides` data changes and queues Valve's targeted
-`ReloadAvatarImage` event after the matching bytes arrive. Identical content
-does not repeatedly invalidate the HUD. Map changes rebind the callback;
-unload restores the prior callback and owned local images. The bridge requires
-validated engine, client, and Panorama signatures. A failed validation leaves
-server publication available and reports that local HUD refresh is unavailable.
-It does not install code on remote clients.
+Avatar publication accesses only the server's `ServerAvatarOverrides` table.
+The plugin does not hook client modules, access client string tables, or dispatch
+Panorama refresh events. Client caching remains under the game's control, so
+an already displayed avatar may remain stale after publication or restoration,
+including on a local listen server. Map shutdown discards publication ownership;
+plugin unload restores owned server entries while preserving later writers.
 
-`bc_avatar_status` reports bridge availability and refresh-event counts.
+`bc_avatar_status` reports server publication availability and active ownership.
 `bc_avatar_override_probe <steamid64> <png_path>` and
 `bc_avatar_override_clear <steamid64>` exercise the same publisher for local
 diagnostics. Avatar refresh does not republish userinfo or replace BotHider's

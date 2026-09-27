@@ -28,8 +28,9 @@ if(MSVC)
     target_compile_options(BotControllerProjectileBirthTests PRIVATE /utf-8 /EHsc)
 endif()
 
-add_executable(BotControllerAvatarPublicationTests avatar_publication_tests.cpp)
-target_include_directories(BotControllerAvatarPublicationTests PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../src/common")
+add_executable(BotControllerAvatarPublicationTests avatar_publication_tests.cpp ../src/common/avatar_overrides.cpp)
+target_include_directories(BotControllerAvatarPublicationTests PRIVATE
+    "${CMAKE_CURRENT_LIST_DIR}/avatar_stubs" "${CMAKE_CURRENT_LIST_DIR}/../src/common")
 add_test(NAME BotControllerAvatarPublicationTests COMMAND BotControllerAvatarPublicationTests)
 
 add_executable(BotControllerUsercmdRequestTests usercmd_requests_tests.cpp)

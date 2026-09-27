@@ -34,7 +34,7 @@
 #include "avatar_overrides.h"
 #include "live_entities.h"
 
-class BotControllerPlugin : public ISmmPlugin
+class BotControllerPlugin : public ISmmPlugin, public IMetamodListener
 {
 public:
     bool Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, bool late) override;
@@ -43,6 +43,7 @@ public:
     bool Pause(char * /*error*/, size_t /*maxlen*/) override { return true; }
     bool Unpause(char * /*error*/, size_t /*maxlen*/) override { return true; }
     void AllPluginsLoaded() override {}
+    void OnLevelShutdown() override { BotController::Avatars::OnLevelShutdown(); }
 
     const char *GetAuthor() override { return "XBribo(๑•.•๑)"; }
     const char *GetName() override { return "BotController"; }
@@ -250,22 +251,16 @@ bool BotControllerPlugin::Load(PluginId id, ISmmAPI *ismm,
         return false;
     }
 
-    BotController::Avatars::Init(
-        BotController::Commands::g_pStringTables,
-        static_cast<INetworkStringTableContainer *>(ismm->GetEngineFactory()(
-            INTERFACENAME_NETWORKSTRINGTABLECLIENT, nullptr)), gd);
+    BotController::Avatars::Init(BotController::Commands::g_pStringTables);
+    ismm->AddListener(this, this);
     BotController::DebugOut("[BotController] plugin loaded successfully\n");
     rollback.armed = false;
     return true;
 }
 
-bool BotControllerPlugin::Unload(char *error, size_t maxlen)
+bool BotControllerPlugin::Unload(char * /*error*/, size_t /*maxlen*/)
 {
-    if (!BotController::Avatars::Shutdown())
-    {
-        std::snprintf(error, maxlen, "Local avatar bridge must unload on the engine main thread");
-        return false;
-    }
+    BotController::Avatars::Shutdown();
     ResetRuntime();
     BotController::DebugOut("[BotController] plugin unloaded\n");
     return true;
