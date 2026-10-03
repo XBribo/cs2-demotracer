@@ -122,8 +122,9 @@ official builds. See [Trademarks](TRADEMARKS.md).
 git clone --recurse-submodules https://github.com/unicbm/demotracer.git
 ```
 
-The GUI, converter, playback plugin and bot runtimes are maintained here.
-Only `third_party/demoparser` is a submodule.
+The GUI, converter, playback plugin and BotRandomizer are maintained here.
+`third_party/demoparser`, `third_party/BotHider`, and `third_party/BotController`
+are pinned submodules.
 
 - [Development](docs/DEVELOPMENT.md): source map, builds, tests and packaging.
 - [Commands](docs/COMMANDS.md): playback commands and defaults.

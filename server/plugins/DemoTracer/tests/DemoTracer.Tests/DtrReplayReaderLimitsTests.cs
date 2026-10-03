@@ -5,6 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DemoTracer.Tests;
@@ -187,6 +188,72 @@ public sealed class DtrReplayReaderLimitsTests : IDisposable
         Assert.Equal(version, replay.Version);
         Assert.Empty(replay.Ticks);
         Assert.Empty(replay.Subticks);
+    }
+
+    // The compatibility adapter, not BotController, normalizes every supported disk version.
+    [Theory]
+    [InlineData(3U)]
+    [InlineData(4U)]
+    [InlineData(5U)]
+    [InlineData(6U)]
+    [InlineData(7U)]
+    [InlineData(8U)]
+    [InlineData(9U)]
+    [InlineData(10U)]
+    [InlineData(11U)]
+    [InlineData(12U)]
+    public void DiskVersionsConvertToUnifiedPlaybackFrames(uint version)
+    {
+        var pre = new NativeMovementSnapshot { OriginX = 12.5f, Buttons = 8, Buttons1 = 8 };
+        var post = new NativeMovementSnapshot { OriginX = 13.5f, Buttons = 8 };
+        var diskTick = new NativeReplayTick { Pre = pre, Post = post, WeaponDefIndex = 7 };
+        var path = WriteFile(writer =>
+        {
+            WriteCompleteHeader(writer, version, tickCount: 1, subtickCount: 0);
+            if (version < 7)
+            {
+                // Legacy bodies store only the 192-byte tick prefix, without the later event tail.
+                var body = MemoryMarshal.AsBytes(new[] { diskTick }.AsSpan())[..192].ToArray();
+                var compressed = Compress(body);
+                writer.Write(CodecBrotli);
+                writer.Write((ulong)body.Length);
+                writer.Write((ulong)compressed.Length);
+                writer.Write(compressed);
+                return;
+            }
+            var snapshots = version >= 8
+                ? BuildV2SnapshotPayload([pre, post])
+                : MemoryMarshal.AsBytes(new[] { pre, post }.AsSpan()).ToArray();
+            writer.Write((uint)(3 + (version >= 9 ? 1 : 0) + (version >= 11 ? 1 : 0)));
+            WriteSection(writer, 1, CodecNone, 2, snapshots, sectionVersion: version >= 8 ? 2U : 1U);
+            var metadata = new byte[8];
+            BitConverter.GetBytes(7).CopyTo(metadata, 0);
+            WriteSection(writer, 2, CodecNone, 1, metadata);
+            WriteSection(writer, 5, CodecNone, 0, []);
+            if (version >= 9)
+            {
+                var history = new byte[16];
+                BitConverter.GetBytes(-1).CopyTo(history, 4);
+                BitConverter.GetBytes(-1).CopyTo(history, 8);
+                WriteSection(writer, 8, CodecNone, 1, history);
+            }
+            if (version >= 11)
+                WriteSection(writer, 9, CodecNone, 0, [], sectionVersion: version >= 12 ? 2U : 1U);
+        });
+
+        foreach (var replay in new[] { DtrReplayReader.Read(path), DtrReplayReader.ReadForPlayback(path) })
+        {
+            var data = ReplayNativeMapper.BuildPlaybackData(replay, true);
+            var frame = Assert.Single(data.Frames);
+            Assert.Equal(replay.TickRate, data.TickRate);
+            Assert.Equal(12.5f, frame.Pre.OriginX);
+            Assert.Equal(13.5f, frame.Post.OriginX);
+            Assert.Equal(7, frame.WeaponDefIndex);
+            Assert.Equal(8UL, frame.Input.Buttons!.Value.Held);
+            Assert.Equal(8UL, frame.Input.Buttons.Value.Changed);
+            Assert.Null(frame.SourcePlayerTick);
+            Assert.Null(frame.Input.ForwardMove);
+        }
     }
 
     [Fact]
@@ -373,6 +440,30 @@ public sealed class DtrReplayReaderLimitsTests : IDisposable
         Assert.Equal(full.TickRate, playback.TickRate);
         Assert.Equal(48 + 16 + 128,
             DtrReplayPrefetch.EstimateReplayBytes(full) - DtrReplayPrefetch.EstimateReplayBytes(playback));
+    }
+
+    // Nonzero legacy evidence must not change whether full and lean reads can be played.
+    [Fact]
+    public void LegacyExtrasDoNotInventSourceHistoryOrBlockPlayback()
+    {
+        var extras = new byte[48];
+        BitConverter.GetBytes(uint.MaxValue).CopyTo(extras, 0);
+        BitConverter.GetBytes(12.5f).CopyTo(extras, 4);
+        BitConverter.GetBytes(11.5f).CopyTo(extras, 8);
+        var path = WriteAuxiliaryReplay(ValidHistoryPayload(), extras);
+        var full = DtrReplayReader.Read(path);
+        var playback = DtrReplayReader.ReadForPlayback(path);
+        Assert.Equal(uint.MaxValue, Assert.Single(full.MovementExtras).Fields);
+        Assert.Empty(playback.MovementExtras);
+
+        foreach (var replay in new[] { full, playback })
+        {
+            var frame = Assert.Single(ReplayNativeMapper.BuildPlaybackData(replay, true).Frames);
+            Assert.Null(frame.SourcePlayerTick);
+            Assert.Null(frame.Pre.JumpPressedTime);
+            Assert.Null(frame.Pre.LastDuckTime);
+            Assert.Null(frame.Pre.LastActualJumpPress);
+        }
     }
 
     [Theory]

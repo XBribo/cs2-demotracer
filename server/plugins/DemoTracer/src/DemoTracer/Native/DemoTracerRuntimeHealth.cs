@@ -16,7 +16,7 @@ namespace DemoTracer;
 public sealed partial class DemoTracerPlugin
 {
     private const int RuntimeHealthSchemaVersion = 1;
-    private const int MinimumBotControllerAbiMinor = 44;
+    private const int MinimumBotControllerAbiMinor = 0;
     private const long RuntimeHealthWriteIntervalMilliseconds = 10_000;
     private const string RuntimeHealthFileName = "demotracer-runtime.v1.json";
     private static readonly JsonSerializerOptions RuntimeHealthJsonOptions = new()
@@ -121,7 +121,7 @@ public sealed partial class DemoTracerPlugin
         var missingCapabilities = BotControllerNative.RequiredCapabilityMask & ~capabilities;
         var requiredCapabilitiesPresent = missingCapabilities == 0;
         var controllerCompatible =
-            abiMajor == BotControllerNative.ExpectedAbiVersion &&
+            BotControllerNative.HasCompatibleLayout(abiInfo) &&
             abiMinor >= MinimumBotControllerAbiMinor &&
             requiredCapabilitiesPresent;
 

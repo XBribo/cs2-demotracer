@@ -166,20 +166,26 @@ public sealed partial class DemoTracerPlugin
         CCSPlayerPawn pawn,
         ReplayLoadoutSnapshot loadout)
     {
-        // CSS owns the manifest-derived desired state. BotController owns the
-        // live Pawn lifecycle and applies it immediately, at replay start, and
-        // once from the first movement/usercmd hook for this registered Pawn.
-        if (!BotControllerNative.SetReplayPawn(slot, pawn.Handle))
+        // Manifest-derived equipment belongs to DemoTracer, not the movement API.
+        if (!player.IsBot || loadout.ArmorValue > 100 ||
+            !BotControllerNative.SetReplayPawn(slot, pawn.Handle) ||
+            pawn.ItemServices is not { Handle: var itemHandle } || itemHandle == IntPtr.Zero)
             return false;
 
         var expectedDefuser = player.Team == CsTeam.CounterTerrorist && loadout.HasDefuser;
-        return BotControllerNative.SetReplayPawnEquipment(
-            slot,
-            pawn.Handle,
-            player.Handle,
-            (int)loadout.ArmorValue,
-            loadout.HasHelmet,
-            expectedDefuser);
+        var itemServices = new CCSPlayer_ItemServices(itemHandle);
+        pawn.ArmorValue = (int)loadout.ArmorValue;
+        itemServices.HasHelmet = loadout.HasHelmet;
+        itemServices.HasDefuser = expectedDefuser;
+        player.PawnArmor = (int)loadout.ArmorValue;
+        player.PawnHasHelmet = loadout.HasHelmet;
+        player.PawnHasDefuser = expectedDefuser;
+        Utilities.SetStateChanged(pawn, "CCSPlayerPawn", "m_ArmorValue");
+        Utilities.SetStateChanged(pawn, "CBasePlayerPawn", "m_pItemServices");
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_iPawnArmor");
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_bPawnHasHelmet");
+        Utilities.SetStateChanged(player, "CCSPlayerController", "m_bPawnHasDefuser");
+        return true;
     }
 
     private static bool ReplayPawnEquipmentStateMatches(

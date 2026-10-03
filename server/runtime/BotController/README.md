@@ -1,5 +1,10 @@
 # CS2 DTR Controller
 
+This directory preserves the legacy ABI 21 fork and its provenance. It is no
+longer built or packaged as the playback runtime. DemoTracer uses the pinned
+XBribo implementation in `third_party/BotController` (ABI 23); the instructions
+below describe the historical fork only.
+
 The maintained source repository is
 [`unicbm/demotracer`](https://github.com/unicbm/demotracer/tree/main/server/runtime/BotController).
 It contains the BotController native runtime, managed API, and provider used

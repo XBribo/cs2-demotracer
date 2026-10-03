@@ -11,14 +11,21 @@
     "max": 12
   },
   "bot_controller": {
-    "abi_major": 21,
-    "min_abi_minor": 44,
-    "movement_intent_version": 1,
-    "public_control_api": 20,
-    "replay_tick_bytes": 228,
-    "replay_tick_event_tail": "reserved_zero",
-    "managed_provider_version": "0.6.3-dtr.3",
-    "required_capabilities_hex": "0x741df"
+    "abi_major": 23,
+    "min_abi_minor": 0,
+    "movement_intent_version": 0,
+    "public_control_api": 0,
+    "replay_frame_bytes": 576,
+    "replay_transport": "private_complete_frame",
+    "replay_tick_bytes": 256,
+    "replay_history_bytes": 56,
+    "replay_tick_event_tail": "native_drop_release_pose",
+    "dtr_replay_tick_bytes": 228,
+    "dtr_movement_extra_bytes": 48,
+    "dtr_event_tail": "reserved_zero",
+    "source_state_restore": "movement_boundary_and_weapon_instance",
+    "managed_provider_version": "0.7.1",
+    "required_capabilities_hex": "0x115f"
   },
   "bot_hider": {
     "api": 1,
@@ -32,7 +39,7 @@
     "companion_api": 7
   },
   "counterstrikesharp": {
-    "minimum_version": "1.0.371",
+    "minimum_version": "1.0.375",
     "target_framework": "net10.0"
   },
   "hook_runtime": {

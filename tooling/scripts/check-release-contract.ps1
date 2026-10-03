@@ -60,26 +60,14 @@ function Read-CargoPackageVersion([string]$RelativePath, [string]$PackageName) {
 
 $contract = (Read-Text "shared\contracts\playback-contract.v1.json") | ConvertFrom-Json
 $sourceRegistry = (Read-Text "server\runtime\common\contracts\replay-source-fields.v1.json") | ConvertFrom-Json
-$nativeSource = Read-Text "server\runtime\BotController\src\BotRecorder\ReplaySourceState.h"
 $managedSource = Read-Text "server\plugins\DemoTracer\src\DemoTracer\Data\DtrReplayReaderSourceState.cs"
 $managedFields = [regex]::Matches($managedSource, 'SourceKind\.(\w+), // (\w+)')
-$nativeFields = [regex]::Matches($nativeSource, '\{Target::(\w+), Kind::(\w+), ClockKind::(\w+), "([^"]+)", (\d+)\}')
 Assert-Equal "source-state managed field count" $managedFields.Count $sourceRegistry.fields.Count
-Assert-Equal "source-state native field count" $nativeFields.Count $sourceRegistry.fields.Count
 for ($fieldIndex = 0; $fieldIndex -lt $sourceRegistry.fields.Count; $fieldIndex++) {
     $field = $sourceRegistry.fields[$fieldIndex]
     Assert-Equal "source-state field ID" $field.id $fieldIndex
     Assert-Equal "source-state managed name $fieldIndex" $managedFields[$fieldIndex].Groups[2].Value $field.name
     Assert-Equal "source-state managed type $fieldIndex" $managedFields[$fieldIndex].Groups[1].Value $field.kind
-    $nativeField = $nativeFields[$fieldIndex]
-    Assert-Equal "source-state native target $fieldIndex" $nativeField.Groups[1].Value $field.target
-    Assert-Equal "source-state native type $fieldIndex" $nativeField.Groups[2].Value $field.kind
-    Assert-Equal "source-state native clock $fieldIndex" $nativeField.Groups[3].Value $field.clock
-    Assert-Equal "source-state native member $fieldIndex" $nativeField.Groups[4].Value $field.field
-    $element = if ($null -ne $field.component) { [int]$field.component } else { [int]$field.native_element }
-    Assert-Equal "source-state native element $fieldIndex" $nativeField.Groups[5].Value ($element * 4)
-    $enumPattern = '\b' + [regex]::Escape($field.name) + '\s*=\s*' + $fieldIndex + '\s*,'
-    if (-not [regex]::IsMatch($nativeSource, $enumPattern)) { throw "source-state native ID mismatch: $($field.name)" }
 }
 $telemetryContract = (Read-Text "shared\contracts\telemetry-contract.v1.json") | ConvertFrom-Json
 $desktopPackage = (Read-Text "desktop\gui\package.json") | ConvertFrom-Json
@@ -124,17 +112,22 @@ Assert-TextPresent "tooling\scripts\package-server.ps1" 'Copy-RequiredFile[^\r\n
 Assert-Equal "CSS minimum DTR reader" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\BotControllerNativeTypes.cs" 'MinRecFormatVersion\s*=\s*(\d+)' "minimum DTR reader") ([string]$contract.dtr_reader.min)
 Assert-Equal "CSS maximum DTR reader" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\BotControllerNativeTypes.cs" 'RecFormatVersion\s*=\s*(\d+)' "maximum DTR reader") ([string]$contract.dtr_reader.max)
 Assert-Equal "CSS native ABI" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\BotControllerNativeTypes.cs" 'ExpectedAbiVersion\s*=\s*(\d+)' "CSS native ABI") ([string]$contract.bot_controller.abi_major)
-Assert-Equal "managed provider native ABI" (Read-RegexValue "server\runtime\BotController\csharp\BotControllerImpl\BotController.NativeApi.cs" 'ExpectedAbiVersion\s*=\s*(\d+)' "managed provider native ABI") ([string]$contract.bot_controller.abi_major)
-Assert-Equal "standalone binding native ABI" (Read-RegexValue "server\runtime\BotController\scripts\BotController.NativeApi.cs" 'ExpectedAbiVersion\s*=\s*(\d+)' "standalone binding native ABI") ([string]$contract.bot_controller.abi_major)
-Assert-Equal "runtime native ABI" (Read-RegexValue "server\runtime\BotController\src\common\exports.cpp" 'kBotControllerAbiMajor\s*=\s*(\d+)' "runtime native ABI") ([string]$contract.bot_controller.abi_major)
+Assert-Equal "managed provider native ABI" (Read-RegexValue "third_party\BotController\csharp\BotControllerApi\BotController.NativeApi.cs" 'ExpectedAbiVersion\s*=\s*(\d+)' "managed provider native ABI") ([string]$contract.bot_controller.abi_major)
+Assert-Equal "BotController frame transport size" (Read-RegexValue "third_party\BotController\src\features\recorder\MotionRecorder.h" 'sizeof\(ReplayFrameData\)\s*==\s*(\d+)' "native frame size") ([string]$contract.bot_controller.replay_frame_bytes)
+Assert-Equal "runtime native ABI" (Read-RegexValue "third_party\BotController\src\bridge\exports.cpp" 'BotController_GetVersion\(\)\s*\{\s*return\s+(\d+)' "runtime native ABI") ([string]$contract.bot_controller.abi_major)
 Assert-Equal "minimum native ABI minor" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\DemoTracerRuntimeHealth.cs" 'MinimumBotControllerAbiMinor\s*=\s*(\d+)' "minimum native ABI minor") ([string]$contract.bot_controller.min_abi_minor)
-Assert-Equal "BotController public control API" (Read-RegexValue "server\runtime\BotController\src\common\exports.cpp" 'BotController_GetPublicApiVersion\(\)\s*\{\s*return\s+(\d+)' "public control API") ([string]$contract.bot_controller.public_control_api)
-Assert-Equal "BotController movement input contract" (Read-RegexValue "server\runtime\BotController\src\common\exports.cpp" 'BotController_GetMovementIntentContractVersion\(\)\s*\{\s*return\s+(\d+)' "movement input contract") ([string]$contract.bot_controller.movement_intent_version)
-Assert-Equal "BotController managed provider" (Read-RegexValue "server\runtime\BotController\csharp\BotControllerImpl\BotControllerImplPlugin.cs" 'ModuleVersion\s*=>\s*"([^"]+)"' "managed provider version") ([string]$contract.bot_controller.managed_provider_version)
-Assert-Equal "BotController replay tick size" (Read-RegexValue "server\runtime\BotController\src\BotRecorder\MotionRecorder.h" 'sizeof\(ReplayTick\)\s*==\s*(\d+)' "native replay tick size") ([string]$contract.bot_controller.replay_tick_bytes)
-Assert-Equal "BotController replay event tail" ([string]$contract.bot_controller.replay_tick_event_tail) "reserved_zero"
+Assert-Equal "legacy public control API absent" ([string]$contract.bot_controller.public_control_api) "0"
+Assert-Equal "legacy movement intent contract absent" ([string]$contract.bot_controller.movement_intent_version) "0"
+Assert-Equal "BotController managed provider base version" (Read-RegexValue "third_party\BotController\CMakeLists.txt" 'project\(BotController VERSION ([0-9.]+)' "managed provider base version") ([string]$contract.bot_controller.managed_provider_version)
+Assert-Equal "BotController replay tick size" (Read-RegexValue "third_party\BotController\src\features\recorder\MotionRecorder.h" 'sizeof\(ReplayTick\)\s*==\s*(\d+)' "native replay tick size") ([string]$contract.bot_controller.replay_tick_bytes)
+Assert-Equal "BotController private history size" (Read-RegexValue "third_party\BotController\src\features\recorder\MotionRecorder.h" 'sizeof\(ReplayHistoryData\)\s*==\s*(\d+)' "native history size") ([string]$contract.bot_controller.replay_history_bytes)
+Assert-Equal "DTR disk replay tick size" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\BotControllerNativeTypes.cs" '\bReplayTickByteSize\s*=\s*(\d+)' "disk replay tick size") ([string]$contract.bot_controller.dtr_replay_tick_bytes)
+Assert-Equal "DTR disk movement extra size" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\Native\BotControllerNativeTypes.cs" '\bReplayMovementExtraByteSize\s*=\s*(\d+)' "disk movement extra size") ([string]$contract.bot_controller.dtr_movement_extra_bytes)
+Assert-Equal "BotController replay event tail" ([string]$contract.bot_controller.replay_tick_event_tail) "native_drop_release_pose"
+Assert-Equal "DTR event tail" ([string]$contract.bot_controller.dtr_event_tail) "reserved_zero"
+Assert-Equal "source state restore scope" ([string]$contract.bot_controller.source_state_restore) "movement_boundary_and_weapon_instance"
 
-$runtimeMinor = [int](Read-RegexValue "server\runtime\BotController\src\common\exports.cpp" 'kBotControllerAbiMinor\s*=\s*(\d+)' "runtime native ABI minor")
+$runtimeMinor = [int](Read-RegexValue "third_party\BotController\src\bridge\exports.cpp" 'const AbiInfo info\{\s*\d+,\s*(\d+),' "runtime native ABI minor")
 if ($runtimeMinor -lt [int]$contract.bot_controller.min_abi_minor) {
     throw "runtime native ABI minor $runtimeMinor is below required $($contract.bot_controller.min_abi_minor)"
 }
@@ -152,7 +145,7 @@ Assert-Equal "DemoTracer target framework" (Read-RegexValue "server\plugins\Demo
 Assert-Equal "CounterStrikeSharp minimum version" (Read-RegexValue "server\plugins\DemoTracer\src\DemoTracer\DemoTracer.csproj" 'CounterStrikeSharp\.API" Version="([^"]+)"' "CounterStrikeSharp version") ([string]$contract.counterstrikesharp.minimum_version)
 Assert-Equal "native hook backend" ([string]$contract.hook_runtime.backend) "khook"
 Assert-Equal "Metamod plugin API" ([string]$contract.hook_runtime.metamod_plugin_api) "18"
-Assert-Equal "runtime native ABI minor" (Read-RegexValue "server\runtime\BotController\src\common\exports.cpp" 'kBotControllerAbiMinor\s*=\s*(\d+)' "runtime native ABI minor") ([string]$contract.bot_controller.min_abi_minor)
+Assert-Equal "runtime native ABI minor" ([string]$runtimeMinor) ([string]$contract.bot_controller.min_abi_minor)
 foreach ($pin in @("metamod_source_commit", "khook_source_commit", "counterstrikesharp_source_commit")) {
     if ([string]$contract.hook_runtime.$pin -notmatch '^[0-9a-f]{40}$') { throw "Invalid hook runtime pin: $pin" }
 }
@@ -160,10 +153,7 @@ $commonHooks = (Read-Text "server\runtime\common\contracts\hook-runtime.v1.json"
 foreach ($field in @("backend", "metamod_minimum_build", "metamod_plugin_api", "metamod_source_commit", "khook_source_commit", "counterstrikesharp_source_commit")) {
     Assert-Equal "common hook runtime $field" ([string]$commonHooks.$field) ([string]$contract.hook_runtime.$field)
 }
-foreach ($runtime in @("BotController")) {
-    Assert-TextAbsent "server\runtime\$runtime\CMakeLists.txt" 'funchook|core/sourcehook' "$runtime legacy hook dependencies"
-    Assert-TextPresent "server\runtime\$runtime\CMakeLists.txt" 'native/khook\.cmake' "$runtime shared KHook interface"
-}
+Assert-TextPresent "third_party\BotController\CMakeLists.txt" 'third_party/khook/include/khook\.hpp' "BotController KHook dependency"
 
 Assert-PathAbsent "desktop\converter\src\main.rs" "converter CLI entrypoint"
 Assert-PathAbsent "desktop\converter\src\cli" "converter CLI module"

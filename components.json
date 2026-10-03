@@ -17,9 +17,10 @@
     },
     {
       "id": "controller",
-      "path": "server/runtime/BotController",
-      "repository": "unicbm/demotracer",
-      "source": "product"
+      "path": "third_party/BotController",
+      "repository": "XBribo/CS2-Bot-Controller",
+      "branch": "DemoTracer",
+      "source": "submodule"
     },
     {
       "id": "hider",

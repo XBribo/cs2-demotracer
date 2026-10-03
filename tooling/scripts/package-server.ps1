@@ -8,8 +8,8 @@ param(
     [string]$Version = "1.0.0",
     [string]$Configuration = "Release",
     [string]$OutputRoot = "dist",
-    [string]$RuntimePackage = "server\runtime\BotController\build\package",
-    [string]$RuntimeBuild = "server\runtime\BotController\build",
+    [string]$RuntimePackage = "third_party\BotController\build\package",
+    [string]$RuntimeBuild = "third_party\BotController\build",
     [string]$BotHiderRoot = "third_party/BotHider",
     [string]$BotRandomizerPackage = "",
     [string]$DotnetPath = "",
@@ -38,13 +38,15 @@ $BotHiderRoot = if ([System.IO.Path]::IsPathRooted($BotHiderRoot)) {
 $cssOut = Join-Path $repoRoot "server\plugins\DemoTracer\src\DemoTracer\bin\$Configuration\net10.0"
 $commonRoot = Join-Path $repoRoot "server\runtime\common"
 $apiOut = Join-Path $commonRoot "csharp\DemoTracerApi\bin\$Configuration\net10.0"
-$botControllerCssOut = Join-Path $repoRoot "server\runtime\BotController\csharp\BotControllerImpl\bin\$Configuration"
-$botControllerApiOut = Join-Path $repoRoot "server\runtime\BotController\csharp\BotControllerApi\bin\$Configuration"
+$botControllerRoot = Join-Path $repoRoot "third_party\BotController"
+$botControllerCssOut = Join-Path $botControllerRoot "csharp\BotControllerImpl\bin\$Configuration"
+$botControllerApiOut = Join-Path $botControllerRoot "csharp\BotControllerApi\bin\$Configuration"
 $playbackContractPath = Join-Path $repoRoot "shared\contracts\playback-contract.v1.json"
 $nugetConfigPath = Join-Path $repoRoot "NuGet.Config"
 $componentArguments = @(
     "-p:DtrCommonRoot=$commonRoot",
     "-p:BotHiderRoot=$BotHiderRoot",
+    "-p:BotControllerRoot=$botControllerRoot",
     "-p:DtrRandomizerRoot=$(Join-Path $repoRoot 'server/runtime/BotRandomizer')"
 )
 
@@ -203,7 +205,7 @@ if (-not $SkipCssBuild) {
     # Keep build-machine paths out of assembly debug records and optional symbols.
     $sourcePathMap = "-p:PathMap=$repoRoot=/_/demotracer"
     $demoTracerProject = Join-Path $repoRoot "server\plugins\DemoTracer\src\DemoTracer\DemoTracer.csproj"
-    $botControllerProject = Join-Path $repoRoot "server\runtime\BotController\csharp\BotControllerImpl\BotControllerImpl.csproj"
+    $botControllerProject = Join-Path $botControllerRoot "csharp\BotControllerImpl\BotControllerImpl.csproj"
     Invoke-Checked $resolvedDotnetPath (@("restore", $botControllerProject, "--configfile", $nugetConfigPath, "-m:1", "-nodeReuse:false", "-p:NuGetAudit=false") + $componentArguments)
     Invoke-Checked $resolvedDotnetPath (@("build", $botControllerProject, "-c", $Configuration, "--no-restore", "-m:1", "-nodeReuse:false", "-p:UseSharedCompilation=false", "-p:NuGetAudit=false", $sourcePathMap) + $componentArguments)
     Invoke-Checked $resolvedDotnetPath (@("restore", $demoTracerProject, "--configfile", $nugetConfigPath, "-m:1", "-nodeReuse:false", "-p:NuGetAudit=false") + $componentArguments)
@@ -229,7 +231,7 @@ if ((Get-FileHash (Join-Path $botRandomizerOut "cs2-lib-econ-index.v1.json")).Ha
     (Get-FileHash (Join-Path $commonRoot "econ\cs2-lib-econ-index.v1.json")).Hash) {
     throw "Common Randomizer package and playback consumers must use the same econ catalog"
 }
-$defaultRuntimeRoot = Join-Path $repoRoot "server\runtime\BotController\build\package"
+$defaultRuntimeRoot = Join-Path $botControllerRoot "build\package"
 if (-not (Test-SameFullPath $runtimeRoot $defaultRuntimeRoot)) {
     Assert-ExternalRuntimeReceipt `
         -Root $runtimeRoot `
@@ -245,16 +247,14 @@ if (-not (Test-SameFullPath $runtimeRoot $defaultRuntimeRoot)) {
 $runtimeDll = Join-Path $runtimeRoot "addons\BotController\bin\win64\BotController.dll"
 Require-Path $runtimeDll "BotController runtime DLL"
 Assert-BinaryContainsExport $runtimeDll "BotController_GetAbiInfo"
-Assert-BinaryContainsExport $runtimeDll "BotController_GetPublicApiVersion"
+Assert-BinaryContainsExport $runtimeDll "BotController_GetReplaySlotState"
 Require-Path (Join-Path $botControllerCssOut "BotControllerImpl.dll") "BotController managed provider"
 Require-Path (Join-Path $botControllerApiOut "BotControllerApi.dll") "BotController shared API"
 Assert-BinaryContainsExport $runtimeDll "BotController_GetCapabilities"
-Assert-BinaryContainsExport $runtimeDll "BotController_GetBuyStatus"
-Assert-BinaryContainsExport $runtimeDll "BotController_RequestEquipBestWeapon"
-Assert-BinaryContainsExport $runtimeDll "BotController_GetBuildId"
+Assert-BinaryContainsExport $runtimeDll "BotController_LoadReplay"
+Assert-BinaryContainsExport $runtimeDll "BotController_StartReplayAt"
+Assert-BinaryContainsExport $runtimeDll "BotController_StartReplayUntil"
 Assert-BinaryContainsExport $runtimeDll "BotController_ReleaseReplayBuffer"
-Assert-BinaryContainsExport $runtimeDll "BotController_SetReplayPawnEquipment"
-Assert-BinaryContainsExport $runtimeDll "BotController_GetReplayPawnEquipmentState"
 Require-Path (Join-Path $runtimeRoot "addons\BotController\gamedata.json") "BotController gamedata"
 Require-Path (Join-Path $runtimeRoot "addons\metamod\BotController.vdf") "BotController Metamod VDF"
 Require-Path (Join-Path $cssOut "DemoTracer.dll") "DemoTracer CSS plugin"
@@ -285,8 +285,8 @@ $botControllerPluginOut = Join-Path $stageRoot "addons\counterstrikesharp\plugin
 Copy-RequiredFile (Join-Path $botControllerCssOut "BotControllerImpl.dll") (Join-Path $botControllerPluginOut "BotControllerImpl.dll")
 Copy-RequiredFile (Join-Path $botControllerCssOut "BotControllerImpl.deps.json") (Join-Path $botControllerPluginOut "BotControllerImpl.deps.json")
 Copy-RequiredFile (Join-Path $botControllerApiOut "BotControllerApi.dll") (Join-Path $stageRoot "addons\counterstrikesharp\shared\BotControllerApi\BotControllerApi.dll")
-Copy-RequiredFile (Join-Path $repoRoot "server\runtime\BotController\csharp\UPSTREAM.md") (Join-Path $botControllerPluginOut "UPSTREAM.md")
-Copy-RequiredFile (Join-Path $repoRoot "server\runtime\BotController\csharp\LICENSE.AGPL3") (Join-Path $botControllerPluginOut "LICENSE.AGPL3")
+Copy-RequiredFile (Join-Path $botControllerRoot "LICENSE") (Join-Path $botControllerPluginOut "LICENSE")
+Copy-RequiredFile (Join-Path $botControllerRoot "LICENSE.AGPL3") (Join-Path $botControllerPluginOut "LICENSE.AGPL3")
 Copy-RequiredFile (Join-Path $cssOut "DemoTracer.deps.json") (Join-Path $pluginOut "DemoTracer.deps.json")
 Copy-RequiredFile (Join-Path $cssOut "DemoTracer.dll") (Join-Path $pluginOut "DemoTracer.dll")
 Copy-RequiredFile (Join-Path $cssOut "ZstdSharp.dll") (Join-Path $pluginOut "ZstdSharp.dll")
@@ -380,10 +380,9 @@ external dependency and is not included.
    `addons/demotracer-sources.v1.json`: native BotHider, `BotHiderImpl`, and
    `shared/BotHiderApi/BotHiderApi.dll`. Remove the old DemoTracer-maintained
    BotHider provider and `DemoTracerBotHiderApi` while preserving user config.
-4. Do not merge BotController or `BotControllerImpl`
-   from a full CS2-Bot-Improver package. Those builds use overlapping paths but
-   are not the same vendor contract. For post-handoff AI, keep this bundle's
-   native set and add only a compatible behavior-only integration.
+4. BotController and `BotControllerImpl` use the pinned XBribo implementation
+   recorded as `controller` in `addons/demotracer-sources.v1.json`. Do not mix
+   an ABI 21 DemoTracer runtime or another BotController revision into this bundle.
 5. Copy this package's `addons` directory into the server `game/csgo` directory
    so it merges with the existing `addons` directory.
 6. Start the server.
@@ -405,6 +404,12 @@ For v__VERSION__, require `runtime_abi=__BOTCONTROLLER_ABI__` and `abi_minor=__B
 version is missing or lower, replace the complete playback bundle, including
 `addons/BotController/bin/win64/BotController.dll`,
 `addons/BotController/gamedata.json`, and `addons/metamod/BotController.vdf`.
+
+Movement replay uses SetupMove. DTR disk layouts are unchanged; the plugin
+converts them to ABI 23. Sparse source state restores supported movement history
+at start/seek/loop/resume and stamina, velocity modifier, gravity scale, gravity
+disabled, friction, and complete base velocity before each command, not the old
+fork's complete weapon/perception state.
 
 ## Desktop Playback Presets
 

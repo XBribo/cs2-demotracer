@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <DtrControllerRoot Condition="'$(DtrControllerRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\runtime\BotController</DtrControllerRoot>
+    <DtrControllerRoot Condition="'$(DtrControllerRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\..\third_party\BotController</DtrControllerRoot>
     <DtrRandomizerRoot Condition="'$(DtrRandomizerRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\runtime\BotRandomizer</DtrRandomizerRoot>
   </PropertyGroup>
 

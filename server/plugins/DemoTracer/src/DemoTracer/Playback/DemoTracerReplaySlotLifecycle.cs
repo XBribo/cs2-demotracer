@@ -104,6 +104,9 @@ public sealed partial class DemoTracerPlugin
                 RestoreReplayBotViewmodel(slot);
             return;
         }
+        // Managed final-frame equipment may revalidate an idle pawn binding.
+        // End native ownership too, while retaining the reusable replay buffer.
+        BotControllerNative.StopReplay(slot);
         CancelSafeC4MutationWithoutTarget();
         ClearPendingWeaponSlotReplacementsForSlot(slot);
         _cosmeticAlignmentTracker.CancelPending(slot);

@@ -31,7 +31,8 @@ $componentArguments = @(
     "-p:DtrCommonRoot=$(Join-Path $repoRoot 'server/runtime/common')",
     "-p:BotHiderRoot=$BotHiderRoot",
     "-p:DtrRandomizerRoot=$(Join-Path $repoRoot 'server/runtime/BotRandomizer')",
-    "-p:DtrControllerRoot=$(Join-Path $repoRoot 'server/runtime/BotController')"
+    "-p:BotControllerRoot=$(Join-Path $repoRoot 'third_party/BotController')",
+    "-p:DtrControllerRoot=$(Join-Path $repoRoot 'third_party/BotController')"
 )
 $nugetConfigPath = Join-Path $repoRoot "NuGet.Config"
 

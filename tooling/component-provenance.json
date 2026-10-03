@@ -8,7 +8,11 @@
   },
   {
     "id": "controller",
-    "path": "server/runtime/BotController",
+    "path": "third_party/BotController",
+    "repository": "XBribo/CS2-Bot-Controller",
+    "source": "submodule",
+    "pinned_commit": "bea8475d3fb4c528651855382b79906a799a0a57",
+    "legacy_path": "server/runtime/BotController",
     "former_repository": "unicbm/cs2-dtr-controller",
     "imported_commit": "0968663d5dea6b1d8d911a5a7b52e1ac3198bc60",
     "history_ref": "component-archive/controller/heads/main"

@@ -514,7 +514,7 @@ public sealed partial class DemoTracerPlugin
         // command-only recordings without manifest viewmodel metadata. Native
         // replay commands subsequently advance this latch to their own desire.
         ClearReplayLeftHandDesiredLatch(slot);
-        if (!_leftHandDesiredEnabled)
+        if (!_leftHandDesiredEnabled || !BotControllerNative.HasLeftHandDesiredLatchExports)
             return true;
         var initialHand = _session.LoadedReplays.TryGetValue(slot, out var replay)
             ? replay.View.Viewmodel?.LeftHanded

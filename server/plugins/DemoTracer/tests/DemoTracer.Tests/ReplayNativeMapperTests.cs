@@ -8,6 +8,65 @@ namespace DemoTracer.Tests;
 
 public sealed class ReplayNativeMapperTests
 {
+    // Reject the old same-major transports before starting or reporting healthy playback.
+    [Theory]
+    [InlineData(576, 256, true)]
+    [InlineData(416, 256, false)]
+    [InlineData(380, 256, false)]
+    [InlineData(0, 228, false)]
+    public void CompatibilityRequiresTheCompleteNativeFrameLayout(int frameSize, int tickSize, bool expected)
+    {
+        var info = BotControllerAbiInfo.Unavailable;
+        info.AbiMajor = 23;
+        info.ReplayFrameSize = frameSize;
+        info.ReplayTickSize = tickSize;
+        info.ReplayCommandSize = 68;
+        Assert.Equal(expected, BotControllerNative.HasCompatibleLayout(info));
+        Assert.False(BotControllerNative.HasCompatibleLayout(BotControllerAbiInfo.Unavailable));
+    }
+
+    // Sparse changes carry forward, and an explicit absence restores null rather than zero.
+    [Fact]
+    public void SourceModifiersPreservePresenceAcrossFrames()
+    {
+        var replay = new DtrReplayFile(12, new NativeReplayTick[3], [],
+            ReplayHighFidelityMetadata.Empty, [], [], [], [], [], 64, 0)
+        {
+            SourceState = [
+                new() { TickIndex = 0, FieldId = 6, ValueBits = 0, Present = 1 },
+                new() { TickIndex = 0, FieldId = 34, ValueBits = 0, Present = 1 },
+                new() { TickIndex = 2, FieldId = 6, ValueBits = 0, Present = 0 }
+            ]
+        };
+        var frames = ReplayNativeMapper.BuildPlaybackData(replay, true).Frames;
+        Assert.Equal(0f, frames[0].Pre.Stamina);
+        Assert.Equal(0f, frames[1].Pre.Stamina);
+        Assert.Null(frames[2].Pre.Stamina);
+        Assert.All(frames, frame =>
+        {
+            Assert.False(frame.Pre.GravityDisabled);
+            Assert.Null(frame.Pre.VelocityModifier);
+            Assert.Null(frame.SourcePlayerTick);
+        });
+    }
+
+    // Compact player-clock runs increase only within the declared run, then retain their last tick.
+    [Fact]
+    public void SourcePlayerClockUsesItsCompactRunInsteadOfDemoTick()
+    {
+        var replay = new DtrReplayFile(12, new NativeReplayTick[3], [],
+            ReplayHighFidelityMetadata.Empty, [], [], [], [], [], 64, 0)
+        {
+            SourceState = [
+                new() { TickIndex = 0, FieldId = 1, ValueBits = 100, Present = 3 },
+                new() { TickIndex = 0, FieldId = 4, ValueBits = 0, Present = 1 }
+            ]
+        };
+        var frames = ReplayNativeMapper.BuildPlaybackData(replay, true).Frames;
+        Assert.Equal([100, 101, 101], frames.Select(frame => frame.SourcePlayerTick!.Value));
+        Assert.All(frames, frame => Assert.Equal(0f, frame.Pre.LastDuckTime));
+    }
+
     [Fact]
     public void InventoryPlanningKeepsFirstAppearanceOrderWithoutPerTickDuplicates()
     {

@@ -3,7 +3,7 @@
 This is the public GUI and product-integration repository for **DemoTracer**,
 whose product name is **CS2 DemoTracer**. The GUI, converter, playback plugin, bot runtimes and shared infrastructure
 are product modules in this working tree. The maintained parser fork and the
-external XBribo BotHider API dependency are pinned Git submodules. Keep product
+external XBribo BotHider and BotController dependencies are pinned Git submodules. Keep product
 contracts and packaging aligned.
 
 ## Project Boundaries
@@ -24,7 +24,7 @@ contracts and packaging aligned.
 ## Engineering Workflow
 
 - Initialize the pinned parser with `git submodule update --init --recursive`.
-  Keep the parser and BotHider gitlinks.
+  Keep the parser, BotHider, and BotController gitlinks.
   Do not introduce other submodules for product modules.
 - Change product modules and all affected consumers in one coherent change.
   Shared contracts and generated catalogs have one source in

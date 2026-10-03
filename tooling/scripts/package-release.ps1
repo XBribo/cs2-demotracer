@@ -17,7 +17,7 @@ param(
     [string]$ReleaseNotesZh = "",
     [switch]$AllowUnsignedInstaller,
     [string]$DotnetPath = "",
-    [string]$RuntimePackage = "server\runtime\BotController\build\package",
+    [string]$RuntimePackage = "third_party\BotController\build\package",
     [string]$BotHiderRoot = "third_party/BotHider",
     [switch]$SkipGuiBuild,
     [switch]$SkipCssBuild,

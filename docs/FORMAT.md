@@ -14,7 +14,7 @@ command-frame data, and shooting input-history data retain their original
 - Current writer format: `.dtr` v12
 - Runtime reader support: v3 through v12
 - Current manifest ABI: 19
-- Current BotController native ABI: 21
+- Current BotController native ABI: 23 (576-byte private complete frame)
 - Current DemoTracer companion API: 7
 
 Compatibility notes:
@@ -22,17 +22,18 @@ Compatibility notes:
 - v3 files do not contain projectile metadata.
 - v3/v4 files use `play_start_tick_index = 0`.
 - v3-v5 files do not contain high-fidelity metadata JSON.
-- v7+ files require the matching playback bundle with BotController native ABI
-  16 and extended replay capability.
+- All supported file versions use the matched ABI 23 playback bundle; the loader
+  converts disk DTOs without modifying recordings.
 - v8 keeps the v7 section container and changes only the snapshot and command
   frame section payloads to bit-exact columnar delta-varint layouts.
 - v9 adds per-command `CSGOUserCmdPB.input_history` and attack start indexes.
-  Playback rebases stored absolute history ticks to the live command tick;
-  demo entity indexes are retained as evidence but are not injected.
-- v11 adds presence-aware source-state changes for native boundary restoration.
+  Input history is retained as evidence, not injected into engine protobufs.
+- v11 adds presence-aware source-state changes for boundary restoration.
 - v12 stores source state in compact clock runs and field-local XOR byte planes;
-  it writes Zstandard sections and requires BotController ABI 21.40 to retain
-  clock runs during native lookup. Existing Brotli sections remain readable.
+  it writes Zstandard sections. The managed adapter resolves clock runs into
+  supported ABI 23 movement-history groups and per-command stamina, velocity
+  modifier, gravity scale, gravity disabled, friction, and complete base velocity.
+  Existing Brotli sections remain readable.
 
 ## Reader Safety Limits
 
@@ -214,13 +215,19 @@ server.
 
 ## v8 Columnar Delta-Varint Sections
 
-Native BotController ABI 21 uses 228-byte replay ticks, including a reserved
-36-byte event tail. Every tail field must be zero; native loading rejects nonzero
-payloads because native weapon-drop recording/replay is unsupported. This is an
-in-memory API layout, not the DTR disk layout.
-DTR gameplay events remain in high-fidelity metadata and are executed by the
-managed replay layer; DTR readers initialize the native event tail to zero to
-preserve this contract. Existing DTR files need no conversion.
+DTR readers retain the legacy 228-byte tick DTO and its reserved 36-byte event
+tail, which must be zero. The adapter maps it to shared `ReplayData` / `ReplayFrame`
+values; BotController owns its ABI 23 packed transport. Native drop remains absent. Gameplay events remain in
+high-fidelity metadata and are executed by the managed layer. Existing DTR files
+need no conversion; disk movement extras remain 48 bytes. Public movement history
+is nullable data on `ReplayFrame.Pre`, with source player tick on the frame and
+tickrate on `ReplayData`. The 56-byte clock-bearing history is private transport only.
+Stamina, velocity modifier, gravity scale, gravity disabled, friction, and complete
+base velocity are nullable values
+on `ReplayFrame.Pre`, restored before each simulated command without a source clock.
+Absent fields are not written; the disk snapshot and source-state sections are unchanged.
+Nonzero legacy extra masks have no defined
+restoration contract and are rejected rather than assigned a guessed clock.
 
 Section version 2 is bit-exact and lossless. It changes storage only; decoded
 `MovementSnapshotV3` and `CommandFrameV1` values are identical to v7 values.
@@ -472,29 +479,24 @@ when empty. `present=0` removes a previously known value and requires zero bits;
 `present=1` preserves exact float/integer bits, including a real zero. Floats must
 be finite and booleans must be zero or one. All changes refer to a replay pre tick.
 
-Native playback indexes these changes for start/seek/loop initialization and the
-first use of a newly created or acquired weapon. It does not write them on every
-tick or reset an existing weapon when switching back to it. Player tickbase and
-ServerInfo tick interval establish source time; positive event/deadline clocks
-are rebased to live simulation time, while inactive sentinel values are preserved.
-Aim-punch base states belong to AimPunchServices and are not added to command view
-angles. Stop and handoff preserve native motion and weapon state.
-
-Boundary writes notify native entity replication once, including nested services.
-Weapons are selected through the native deploy path before restoring their attack
-deadlines. Legacy clip counts, reserve ammo and reload flags remain readable;
-v12 writers omit them and the unused ServerTick field. Playback never restores
-ammunition, including during initial start or weapon replacement.
-The live server owns ammunition capacity, supply and reload rules. Source and
-live tick intervals must match; playback does not resample state clocks.
+The ABI 23 adapter carries forward presence-aware values and resolves PlayerTick
+runs. It restores only LastDuckTime, complete actual/usable jump tick-fraction
+pairs, complete landing tick-fraction pairs, and complete landing velocity at
+start/seek/loop/held resume. Selected history requires a real recorded player
+clock; demo tick numbers are not substitutes. Native replay rebases positive
+history clocks to the live player tickbase, preserving inactive sentinels.
+Other source fields, including weapon deadlines and aim-punch, remain evidence
+and are not restored by this basic adapter. The live server owns ammunition,
+capacity, supply and reload rules. Source and live tick intervals must match;
+playback does not resample state clocks.
 
 A discontinuous start already on a ladder requires a valid recorded contact
 normal. When the demo omits it, start before mounting the ladder so native movement
 can establish contact. Playback rejects that unsupported start instead of using a
 zero or stale plane. The ladder surface index is not a substitute for its normal.
 
-Manifest ABI 19 requires the matching v12 reader and BotController ABI 21.40
-source-state capability (bit 17). Older archives remain readable but do not gain
+Manifest ABI 19 requires the matching v12 reader and BotController ABI 23
+adapter. Older archives remain readable but do not gain
 source evidence retroactively; reconvert the original demo to populate this section.
 
 ### v12 compact source state (section 9, version 2)
@@ -521,12 +523,12 @@ overlap, and must sum to `element_count`. Stored records retain strict
 presence/type validation as v11. The final value of a run remains in force until
 the next change, as with the legacy change stream.
 
-The converter and managed/native playback retain compact runs in memory. The
-16-byte native change structure is unchanged in size; ABI 21.40 assigns `present`
+The converter and managed reader retain compact runs in memory. The
+16-byte change DTO assigns `present`
 bit 0 to presence and bits 1..24 to run length minus one (bits 25..31 must be zero).
-Non-clock fields retain 0/1. Native seek/start queries calculate only the requested
-clock value; neither loading nor continuous playback expands or rewrites it per
-tick. Existing callers using 0/1 remain valid. Readers continue to require plain
+Non-clock fields retain 0/1. The managed adapter calculates the per-tick source
+clock for aligned movement extras; native replay consumes extras only at
+boundaries. Readers continue to require plain
 0/1 presence in legacy section version 1.
 
 Field IDs 0, 52, 53, 54, 65 and 66 are reserved for legacy archives and omitted

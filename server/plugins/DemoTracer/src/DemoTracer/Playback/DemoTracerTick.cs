@@ -83,6 +83,14 @@ public sealed partial class DemoTracerPlugin
             var state = BotControllerNative.GetReplayState(slot);
             if (!state.Playing)
             {
+                // ABI 23 stops immediately after the final movement frame. Drain
+                // its managed metadata before releasing ownership or looping.
+                if (state.Total > 0 && state.Cursor >= state.Total &&
+                    _session.LoadedReplays.TryGetValue(slot, out var finishedReplay))
+                {
+                    ProcessReplayInventory(slot, finishedReplay, state.Cursor);
+                    ProcessReplayHifiEvents(slot, finishedReplay, state.Cursor);
+                }
                 if (state.Total > 0 && state.Cursor >= state.Total &&
                     _session.ReplaySlots.TryGet(slot, out var runtime) && runtime.Loop)
                 {

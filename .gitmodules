@@ -6,3 +6,7 @@
 	path = third_party/BotHider
 	url = https://github.com/XBribo/CS2-Bot-Hider.git
 	branch = DemoTracer
+[submodule "third_party/BotController"]
+	path = third_party/BotController
+	url = https://github.com/XBribo/CS2-Bot-Controller.git
+	branch = DemoTracer

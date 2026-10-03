@@ -415,7 +415,8 @@ public sealed partial class DemoTracerPlugin
 
     private void ApplyReplayLeftHandDesiredLatch(int slot, bool? leftHanded)
     {
-        if (!_leftHandDesiredEnabled || !leftHanded.HasValue)
+        if (!_leftHandDesiredEnabled || !leftHanded.HasValue ||
+            !BotControllerNative.HasLeftHandDesiredLatchExports)
         {
             ClearReplayLeftHandDesiredLatch(slot);
             return;

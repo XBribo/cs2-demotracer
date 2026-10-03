@@ -61,7 +61,18 @@ internal static partial class BotControllerNative
         }
     }
 
-    public static bool IsCompatible => AbiVersion == ExpectedAbiVersion;
+    public static bool IsCompatible => AbiVersion == ExpectedAbiVersion && HasCompatibleLayout(AbiInfo);
+
+    // ABI 23 existed with different private transports; the major alone is not sufficient.
+    internal static bool HasCompatibleLayout(BotControllerAbiInfo info)
+        => info.AbiMajor == ExpectedAbiVersion &&
+           info.MovementSnapshotSize == MovementSnapshotByteSize &&
+           info.ReplayTickSize == NativeReplayTickByteSize &&
+           info.SubtickMoveSize == SubtickMoveByteSize &&
+           info.ReplaySlotStateSize == ReplaySlotStateByteSize &&
+           info.MaxSlots == MaxSlots &&
+           info.ReplayFrameSize == NativeReplayFrameByteSize &&
+           info.ReplayCommandSize == ReplayCommandFrameByteSize;
 
     public static bool HasRequiredCapabilities
         => (Capabilities & RequiredCapabilityMask) == RequiredCapabilityMask;
@@ -179,7 +190,8 @@ internal static partial class BotControllerNative
 
     public static bool HasLeftHandIntentAliasExports => ProbeLeftHandIntentAliasExports();
 
-    public static bool HasLeftHandDesiredLatchExports => ProbeLeftHandDesiredLatchExports();
+    // ABI 23 publishes hand preference from command frames, not a legacy latch.
+    public static bool HasLeftHandDesiredLatchExports => !IsCompatible && ProbeLeftHandDesiredLatchExports();
 
     public static bool HasProjectileBirthAlignExports => ProbeProjectileBirthAlignExports();
 
@@ -212,6 +224,7 @@ internal static partial class BotControllerNative
                    $"release_replay_buffer={HasReleaseReplayBufferCapability} " +
                    $"replay_pawn_equipment={HasReplayPawnEquipmentCapability} " +
                    $"projectile_birth_align={HasProjectileBirthAlignExports} " +
+                   "source_state=movement_boundary_and_weapon_instance " +
                    $"dtr_reader={MinRecFormatVersion}..{RecFormatVersion} " +
                    $"platform={RuntimePlatformName} api={DemoTracerApiVersion}";
         }
@@ -613,8 +626,11 @@ internal static partial class BotControllerNative
         try
         {
             EnsureNativeLayout();
-            if (!WriteLeftHandDesired)
-                StripLeftHandDesired(replay.CommandFrames);
+            if (!IsCompatible || !HasRequiredCapabilities)
+            {
+                LastLoadError = $"replay requires BotController ABI {ExpectedAbiVersion}; {RuntimeSummary}";
+                return false;
+            }
             metadata = ReplayNativeMapper.BuildMetadata(replay);
             if (replay.Ticks.Length == 0)
             {
@@ -622,60 +638,10 @@ internal static partial class BotControllerNative
                 return false;
             }
 
-            var subticks = replay.Subticks.Length == 0
-                ? [new NativeSubtickMove()]
-                : replay.Subticks;
-            if (replay.Version >= 7)
-            {
-                if (!IsCompatible)
-                {
-                    LastLoadError = $"v7+ replay requires BotController ABI {ExpectedAbiVersion}; {RuntimeSummary}";
-                    return false;
-                }
-                if ((Capabilities & CapabilityExtendedReplay) == 0)
-                {
-                    LastLoadError = $"v7+ replay requires extended replay capability; {RuntimeSummary}";
-                    return false;
-                }
-                var commandFrames = replay.CommandFrames.Length == 0
-                    ? [new NativeReplayCommandFrame()]
-                    : replay.CommandFrames;
-                var movementExtras = replay.MovementExtras.Length == 0
-                    ? [new NativeReplayMovementExtra()]
-                    : replay.MovementExtras;
-                // Input history is retained in the DTR for future use, but mutating
-                // the engine-owned protobuf graph is not safe from this module.
-                var extendedOk = BotController_LoadReplayExtended(
-                    slot,
-                    replay.Ticks,
-                    replay.Ticks.Length,
-                    subticks,
-                    replay.Subticks.Length,
-                    commandFrames,
-                    replay.CommandFrames.Length,
-                    movementExtras,
-                    replay.MovementExtras.Length) == 0;
-                if (extendedOk && replay.Version >= 11)
-                {
-                    if ((Capabilities & CapabilityReplaySourceState) == 0 ||
-                        BotController_LoadReplaySourceState(slot, replay.SourceState.Length == 0 ? [new NativeReplaySourceStateChange()] : replay.SourceState,
-                            replay.SourceState.Length, replay.TickRate, CounterStrikeSharp.API.Server.TickInterval) != 0)
-                    {
-                        BotController_ReleaseReplayBuffer(slot);
-                        LastLoadError = "BotController source state load failed";
-                        return false;
-                    }
-                }
-                LastLoadError = extendedOk ? string.Empty : "BotController_LoadReplayExtended failed";
-                return extendedOk;
-            }
-
-            var ok = BotController_LoadReplay(
-                slot,
-                replay.Ticks,
-                replay.Ticks.Length,
-                subticks,
-                replay.Subticks.Length) == 0;
+            // The disk DTOs are not native ABI structs. Input history stays in
+            // the DTR; the engine-owned protobuf graph is not mutated here.
+            var data = ReplayNativeMapper.BuildPlaybackData(replay, WriteLeftHandDesired);
+            var ok = BotControllerApi.BotController.LoadReplay(slot, data);
             LastLoadError = ok ? string.Empty : "BotController_LoadReplay failed";
             return ok;
         }
@@ -698,17 +664,6 @@ internal static partial class BotControllerNative
         {
             metadata = ReplayFileMetadata.Empty;
             return false;
-        }
-    }
-
-    private static void StripLeftHandDesired(NativeReplayCommandFrame[] commandFrames)
-    {
-        for (var i = 0; i < commandFrames.Length; i++)
-        {
-            var frame = commandFrames[i];
-            frame.Fields &= ~CommandFieldLeftHand;
-            frame.LeftHandDesired = 0;
-            commandFrames[i] = frame;
         }
     }
 
@@ -750,7 +705,7 @@ internal static partial class BotControllerNative
 
     public static bool StartReplayAt(int slot, bool loop, uint startIndex)
     {
-        if (!ValidSlot(slot))
+        if (!ValidSlot(slot) || !IsCompatible)
             return false;
         // Replay injection owns movement/view output. Keep the native bot
         // state machine and perception running underneath for warm handoff.
@@ -766,7 +721,7 @@ internal static partial class BotControllerNative
         uint startIndex,
         uint holdBeforeIndex)
     {
-        if (!ValidSlot(slot))
+        if (!ValidSlot(slot) || !IsCompatible)
             return false;
         if (holdBeforeIndex <= startIndex)
             return false;
@@ -815,7 +770,10 @@ internal static partial class BotControllerNative
     public static bool TryGetReplayTick(int slot, out NativeReplayTick tick)
     {
         tick = default;
-        return ValidSlot(slot) && BotController_GetReplayTick(slot, out tick) == 0;
+        if (!ValidSlot(slot) || !IsCompatible || !BotControllerApi.BotController.TryGetReplayFrame(slot, out var frame))
+            return false;
+        tick = ReplayNativeMapper.ToDiskTick(frame);
+        return true;
     }
 
     public static bool SwitchBotWeapon(int slot, int defIndex)

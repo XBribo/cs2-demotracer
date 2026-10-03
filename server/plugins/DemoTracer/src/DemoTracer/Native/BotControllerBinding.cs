@@ -11,9 +11,6 @@ namespace DemoTracer;
 internal static partial class BotControllerNative
 {
     [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
-    private static extern int BotController_LoadReplaySourceState(int slot, [In] NativeReplaySourceStateChange[] changes, int count, float tickRate, float liveTickInterval);
-
-    [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
     private static extern int BotController_Lock(int slot, int kind, int arg);
 
     [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
@@ -147,26 +144,6 @@ internal static partial class BotControllerNative
         int leftHandDesired);
 
     [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
-    private static extern int BotController_LoadReplay(
-        int slot,
-        [In] NativeReplayTick[] ticks,
-        int tickCount,
-        [In] NativeSubtickMove[] subs,
-        int subCount);
-
-    [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
-    private static extern int BotController_LoadReplayExtended(
-        int slot,
-        [In] NativeReplayTick[] ticks,
-        int tickCount,
-        [In] NativeSubtickMove[] subs,
-        int subCount,
-        [In] NativeReplayCommandFrame[] commandFrames,
-        int commandFrameCount,
-        [In] NativeReplayMovementExtra[] movementExtras,
-        int movementExtraCount);
-
-    [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
     private static extern int BotController_LoadReplayWithInputHistory(
         int slot,
         [In] NativeReplayTick[] ticks,
@@ -211,9 +188,6 @@ internal static partial class BotControllerNative
     private static extern int BotController_GetReplaySlotState(
         int slot,
         out NativeReplaySlotState state);
-
-    [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
-    private static extern int BotController_GetReplayTick(int slot, out NativeReplayTick tick);
 
     [DllImport("BotController", CallingConvention = CallingConvention.Cdecl)]
     private static extern int BotController_SwitchBotWeapon(int slot, int defIndex);

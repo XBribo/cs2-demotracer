@@ -11,14 +11,18 @@ namespace DemoTracer;
 
 internal static partial class BotControllerNative
 {
-    public const int ExpectedAbiVersion = 21;
+    public const int ExpectedAbiVersion = 23;
     public const uint RecFormatVersion = 12;
     public const uint MinRecFormatVersion = 3;
     public const int MovementSnapshotByteSize = 92;
+    // DTR disk layouts remain unchanged; ABI 23 uses a private complete-frame transport.
     public const int ReplayTickByteSize = 228;
+    public const int NativeReplayTickByteSize = 256;
     public const int SubtickMoveByteSize = 28;
     public const int ReplayCommandFrameByteSize = 68;
     public const int ReplayMovementExtraByteSize = 48;
+    public const int NativeReplayHistoryByteSize = 56;
+    public const int NativeReplayFrameByteSize = 576;
     public const int ReplayInputHistoryTickByteSize = 16;
     public const int ReplayInputHistoryEntryByteSize = 128;
     public const int ProjectileBirthAlignStatusByteSize = 36;
@@ -54,18 +58,14 @@ internal static partial class BotControllerNative
     internal const ulong CapabilityAvatarPublication = 1UL << 18;
 
     public const ulong RequiredCapabilityMask =
-        CapabilityAvatarPublication |
-        CapabilityReplaySourceState |
         CapabilityReplaySlotState |
         CapabilityStartReplayAt |
         CapabilityStartReplayUntil |
         CapabilityReplayTick |
         CapabilityWeaponSwitchRead |
         CapabilityBuyPlan |
-        CapabilityControllerBotOffset |
         CapabilityExtendedReplay |
-        CapabilityHandoffBestWeapon |
-        CapabilityReplayPawnEquipment;
+        CapabilityReleaseReplayBuffer;
 
     public static string RuntimePlatformName
         => RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
@@ -76,6 +76,9 @@ internal static partial class BotControllerNative
 
     internal static void EnsureNativeLayout()
     {
+        var info = AbiInfo;
+        if (!HasCompatibleLayout(info))
+            throw new InvalidOperationException("BotController ABI 23 frame transport mismatch");
         if (Marshal.SizeOf<NativeReplaySourceStateChange>() != 16)
             throw new InvalidOperationException("source state ABI layout mismatch");
         var snapshotSize = Marshal.SizeOf<NativeMovementSnapshot>();
@@ -133,15 +136,15 @@ internal struct BotControllerAbiInfo
     public int ReplaySlotStateSize;
     public int MaxSlots;
     public ulong Capabilities;
-    public int Reserved0;
-    public int Reserved1;
+    public int ReplayFrameSize;
+    public int ReplayCommandSize;
 
     public static BotControllerAbiInfo Unavailable => new()
     {
         AbiMajor = -1,
         AbiMinor = 0,
         MovementSnapshotSize = BotControllerNative.MovementSnapshotByteSize,
-        ReplayTickSize = BotControllerNative.ReplayTickByteSize,
+        ReplayTickSize = BotControllerNative.NativeReplayTickByteSize,
         SubtickMoveSize = BotControllerNative.SubtickMoveByteSize,
         ReplaySlotStateSize = BotControllerNative.ReplaySlotStateByteSize,
         MaxSlots = BotControllerNative.MaxSlots,

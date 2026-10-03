@@ -11,7 +11,7 @@ namespace DemoTracer;
 [StructLayout(LayoutKind.Sequential, Pack = 4)]
 internal struct NativeReplaySourceStateChange
 {
-    // ABI 21.40: Present bit 0 is presence; bits 1..24 are PlayerTick run
+    // Compact DTR DTO: Present bit 0 is presence; bits 1..24 are PlayerTick run
     // length minus one. All other fields retain legacy 0/1 presence.
     public uint TickIndex, FieldId, ValueBits, Present;
 }

@@ -5,41 +5,61 @@
  *--------------------------------------------------------------------------------------------*/
 
 using BotControllerImpl;
+using BotControllerApi;
+using System.IO.Compression;
+using System.Text;
 
 namespace DemoTracer.Tests;
 
 public sealed class PublicMotionRecordingTests
 {
     [Fact]
-    public void MotionJsonWithoutExperimentalEventsPreservesItsData()
+    public void LegacyMotionJsonPreservesItsDataInUnifiedFrames()
     {
         var recording = LoadJson("""
             {"Tickrate":64,"Ticks":[{"WeaponDefIndex":7,"Pre":{"OriginX":128.25}}],
-             "Subticks":[],"Commands":[{"ForwardMove":0.5}]}
+             "Subticks":[],"Commands":[{"ForwardMove":0.5,"Fields":257}]}
             """);
-        Assert.Single(recording.Ticks);
-        Assert.Equal(7, recording.Ticks[0].WeaponDefIndex);
-        Assert.Equal(128.25f, recording.Ticks[0].Pre.OriginX);
-        Assert.Equal(0.5f, Assert.Single(recording.Commands).ForwardMove);
-        Assert.Equal(0u, recording.Ticks[0].EventFlags);
+        var frame = Assert.Single(recording.Frames);
+        Assert.Equal(64, recording.TickRate);
+        Assert.Equal(7, frame.WeaponDefIndex);
+        Assert.Equal(128.25f, frame.Pre.OriginX);
+        Assert.Equal(0.5f, frame.Input.ForwardMove);
+        Assert.Null(frame.Drop);
     }
 
-    [Theory]
-    [InlineData("EventFlags")]
-    [InlineData("EventWeaponDefIndex")]
-    [InlineData("EventDropVectorFlags")]
-    [InlineData("EventDropTargetX")]
-    [InlineData("EventDropTargetY")]
-    [InlineData("EventDropTargetZ")]
-    [InlineData("EventDropVelocityX")]
-    [InlineData("EventDropVelocityY")]
-    [InlineData("EventDropVelocityZ")]
-    public void UnsupportedEventPayloadReportsItsTickBeforeNativeLoad(string field)
+    [Fact]
+    public void LegacyDropWithoutReleasePoseIsRejectedBeforeNativeLoad()
     {
-        var exception = Assert.Throws<NotSupportedException>(() =>
-            LoadJson($$"""{"Ticks":[{}, {"{{field}}":1}],"Subticks":[]}"""));
-        Assert.Contains("weapon-drop events are unsupported (tick 1)", exception.Message);
+        var exception = Assert.Throws<InvalidDataException>(() =>
+            LoadJson("""
+                {"Tickrate":64,"Ticks":[{"EventFlags":1}],"Subticks":[],"Commands":[{"Fields":256}]}
+                """));
+        Assert.Contains("drop release pose", exception.Message);
     }
+
+    // Presence must preserve supplied zero modifiers without inventing a player clock.
+    [Fact]
+    public void UnifiedMotionPreservesOptionalSourceState()
+    {
+        var recording = LoadJson("""
+            {"TickRate":64,"Frames":[{"Pre":{"Stamina":0,"GravityDisabled":false},
+             "Input":{"ForwardMove":0},"WeaponDefIndex":7}]}
+            """);
+        var frame = Assert.Single(recording.Frames);
+        Assert.Equal(0f, frame.Pre.Stamina);
+        Assert.False(frame.Pre.GravityDisabled);
+        Assert.Null(frame.Pre.VelocityModifier);
+        Assert.Null(frame.SourcePlayerTick);
+        Assert.Equal(0f, frame.Input.ForwardMove);
+    }
+
+    // Clock-dependent history is invalid without a source player tickbase.
+    [Fact]
+    public void UnifiedHistoryWithoutSourceClockIsRejected()
+        => Assert.Throws<InvalidDataException>(() => LoadJson("""
+            {"TickRate":64,"Frames":[{"Pre":{"LastDuckTime":0}}]}
+            """));
 
     [Theory]
     [InlineData("null")]
@@ -48,12 +68,15 @@ public sealed class PublicMotionRecordingTests
     public void NullRecordingDataIsRejectedBeforeNativeLoad(string json)
         => Assert.Throws<InvalidDataException>(() => LoadJson(json));
 
-    private static MotionRecording LoadJson(string json)
+    // Match the maintained provider's Brotli container rather than the old plain JSON format.
+    private static ReplayData LoadJson(string json)
     {
         string path = Path.GetTempFileName();
         try
         {
-            File.WriteAllText(path, json);
+            using (var file = File.Create(path))
+            using (var brotli = new BrotliStream(file, CompressionLevel.Optimal))
+                brotli.Write(Encoding.UTF8.GetBytes(json));
             return MotionStore.LoadFromFile(path);
         }
         finally

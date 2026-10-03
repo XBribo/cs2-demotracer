@@ -397,6 +397,8 @@ jobs:
         component: [BotController]
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: recursive
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
@@ -420,19 +422,24 @@ jobs:
           repository: alliedmodders/hl2sdk
           ref: ${{ steps.native.outputs.sdk }}
           path: .external/hl2sdk
-      - name: Test and build full native DLL
+      - name: Build unified BotController native DLL
         shell: pwsh
         env:
           MMSOURCE_DEV: ${{ github.workspace }}/.external/metamod-khook
           HL2SDKCS2: ${{ github.workspace }}/.external/hl2sdk
           PROTOC: ${{ github.workspace }}/.external/hl2sdk/devtools/bin/protoc.exe
-        run: server/runtime/${{ matrix.component }}/tools/check.ps1 -NativeBuild -SkipManagedBuild
+          CSGO_PROTO: ${{ github.workspace }}/.external/hl2sdk/common
+        run: |
+          cmake -S third_party/BotController -B third_party/BotController/build -A x64
+          if ($LASTEXITCODE -ne 0) { throw 'BotController configure failed' }
+          cmake --build third_party/BotController/build --config Release --target BotController
+          if ($LASTEXITCODE -ne 0) { throw 'BotController build failed' }
 
       - name: Save native package for product integration
         uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.component }}
-          path: server/runtime/${{ matrix.component }}/.build/native/package/
+          path: third_party/BotController/build/package/
           if-no-files-found: error
 
   playback-package:
@@ -453,7 +460,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: native-BotController
-          path: server/runtime/BotController/build/package
+          path: third_party/BotController/build/package
       - uses: actions/download-artifact@v8
         with:
           name: managed-playback

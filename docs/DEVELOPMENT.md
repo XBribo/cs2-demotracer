@@ -2,8 +2,8 @@
 
 ## Architecture
 
-All product modules are maintained in this repository. Only
-`third_party/demoparser` is a submodule; `components.json` records ownership.
+Product modules are maintained here; the parser, XBribo BotHider and BotController
+are pinned submodules. `components.json` records ownership.
 
 | Path | Responsibility |
 | --- | --- |
@@ -12,8 +12,8 @@ All product modules are maintained in this repository. Only
 | `third_party/demoparser/` | Maintained `demoparser` branch with the minimal `parser` / `csgoproto` workspace |
 | `server/plugins/DemoTracer/` | Playback module: production project in `src/DemoTracer`, configuration in `config`, tests in `tests/DemoTracer.Tests` |
 | `server/runtime/common/csharp/DemoTracerApi/` | Contract-only companion API installed under CounterStrikeSharp `shared/` |
-| `server/runtime/BotController/` | Native replay buffers, movement/input injection, weapon control, and C ABI |
-| `server/runtime/BotHider/` | Native and managed bot identity/presentation provider |
+| `third_party/BotController/` | Unified XBribo native replay buffers, movement/input injection, weapon control, and C ABI |
+| `third_party/BotHider/` | External native and managed bot identity/presentation provider |
 | `server/runtime/BotRandomizer/` | Bundled and version-locked cosmetic entity writer |
 | `server/runtime/common/native/` | Common component's shared native utilities and tests |
 | `server/runtime/common/contracts/` | Shared source-field declarations and native host/toolchain pins |
@@ -76,8 +76,8 @@ movement initializations without writing per-tick logs.
 | --- | --- |
 | `.dtr` writer / reader | v12 / v3-v12 |
 | Manifest ABI | 19 |
-| BotController native ABI | 21, minor 44+; 228-byte replay tick |
-| BotHider / BotRandomizer API | 3 / 3 |
+| BotController native ABI | 23, minor 0+; 576-byte private frame; public `ReplayData` / `ReplayFrame` |
+| BotHider / BotRandomizer API | 1 / 3 |
 | DemoTracer companion API | 7 |
 
 ## Component Maintenance
@@ -91,8 +91,8 @@ git submodule update --init --recursive
 node tooling/scripts/check-source-layout.mjs --require-checkout
 ```
 
-The source-layout check rejects nested product submodules and validates the
-single parser pin. Update the parser deliberately after reviewing its fork;
+The source-layout check rejects unlisted submodules and validates all three
+dependency pins. Update dependencies deliberately after reviewing their changes;
 do not use `git submodule update --remote` as a product update mechanism.
 
 Update shared declarations and affected consumers together. CI selects affected

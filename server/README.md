@@ -45,7 +45,7 @@ BotController and BotHider use the single [KHook](https://github.com/Kenzzer/KHo
 engine exported by Metamod for both function and virtual hooks. The playback
 server requires Metamod 2.0 build 1469 or newer (plugin API 18) and a
 KHook-enabled CounterStrikeSharp host. CounterStrikeSharp's managed API minimum
-remains 1.0.371; that version number alone does not prove its native hook backend.
+is 1.0.375; that version number alone does not prove its native hook backend.
 
 The maintained source baseline is recorded in
 [`playback-contract.v1.json`](../shared/contracts/playback-contract.v1.json):
@@ -77,7 +77,8 @@ cmake --build server/runtime/common/.build/native-tests --config Release
 ctest --test-dir server/runtime/common/.build/native-tests -C Release --output-on-failure
 ```
 
-The current playback contract requires BotController ABI 21, minor 44 or newer.
+The current playback contract requires the pinned XBribo BotController ABI 23,
+minor 0 or newer, from `third_party/BotController`.
 The GUI rejects install receipts from the older hook runtime. The managed
 heartbeat reports older BotController binaries as incompatible.
 

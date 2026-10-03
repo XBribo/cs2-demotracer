@@ -7,8 +7,8 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 foreach ($relative in @(
     'server/plugins/DemoTracer/src/DemoTracer/bin/Release/net10.0',
     'server/runtime/common/csharp/DemoTracerApi/bin/Release/net10.0',
-    'server/runtime/BotController/csharp/BotControllerImpl/bin/Release',
-    'server/runtime/BotController/csharp/BotControllerApi/bin/Release'
+    'third_party/BotController/csharp/BotControllerImpl/bin/Release',
+    'third_party/BotController/csharp/BotControllerApi/bin/Release'
 )) {
     $source = Join-Path $root $relative
     if (-not (Test-Path -LiteralPath $source)) { throw "Missing tested build output: $relative" }

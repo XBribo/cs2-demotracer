@@ -6,17 +6,21 @@
     <AssemblyName>DemoTracer</AssemblyName>
     <RootNamespace>DemoTracer</RootNamespace>
     <BotHiderRoot Condition="'$(BotHiderRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\..\third_party\BotHider</BotHiderRoot>
+    <BotControllerRoot Condition="'$(BotControllerRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\..\third_party\BotController</BotControllerRoot>
     <DtrCommonRoot Condition="'$(DtrCommonRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\runtime\common</DtrCommonRoot>
     <DtrRandomizerRoot Condition="'$(DtrRandomizerRoot)' == ''">$(MSBuildThisFileDirectory)..\..\..\..\runtime\BotRandomizer</DtrRandomizerRoot>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.371" />
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.375" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.8" GeneratePathProperty="true" />
     <ProjectReference Include="$(DtrCommonRoot)\csharp\DemoTracerApi\DemoTracerApi.csproj">
       <Private>false</Private>
     </ProjectReference>
     <ProjectReference Include="$(BotHiderRoot)\csharp\BotHiderApi\BotHiderApi.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <ProjectReference Include="$(BotControllerRoot)\csharp\BotControllerApi\BotControllerApi.csproj">
       <Private>false</Private>
     </ProjectReference>
     <ProjectReference Include="$(DtrRandomizerRoot)\BotRandomizerApi\BotRandomizerApi.csproj">

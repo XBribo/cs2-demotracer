@@ -10,15 +10,16 @@ const { components } = JSON.parse(readFileSync('components.json', 'utf8'));
 const submodules = new Map([
   ['third_party/demoparser', { id: 'parser', repository: 'unicbm/demoparser' }],
   ['third_party/BotHider', { id: 'hider', repository: 'XBribo/CS2-Bot-Hider' }],
+  ['third_party/BotController', { id: 'controller', repository: 'XBribo/CS2-Bot-Controller' }],
 ]);
 const modules = git('config', '--file', '.gitmodules', '--get-regexp', '^submodule\..*\.path$');
 if (modules.split('\n').length !== submodules.size || modules.split('\n').some(line => !submodules.has(line.split(' ')[1]))) {
-  throw new Error('Only the parser and external BotHider may be source submodules.');
+  throw new Error('Only the parser, BotHider, and BotController may be source submodules.');
 }
 const entries = git('ls-files', '--stage').split('\n');
 const links = entries.filter(line => line.startsWith('160000 '));
 if (links.length !== submodules.size || links.some(line => !submodules.has(line.split('\t')[1]))) {
-  throw new Error('Expected pinned parser and BotHider gitlinks.');
+  throw new Error('Expected pinned parser, BotHider, and BotController gitlinks.');
 }
 const ids = new Set();
 for (const c of components) {
@@ -45,4 +46,4 @@ for (const [path, { repository }] of submodules) {
     }
   }
 }
-console.log('Source layout verified: five product modules and two pinned dependencies.');
+console.log('Source layout verified: four product modules and three pinned dependencies.');
